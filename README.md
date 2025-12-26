@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+﻿# 剧本墨坊 (Script Ink)
 
-## Getting Started
+一个面向剧本杀创作者的协作与共创平台 MVP。
 
-First, run the development server:
+## 功能概览
+- 结构化剧本编辑：大纲 / 角色 / 线索 / DM 手册
+- Fork 分支机制：追踪 root_id / parent_id
+- 社区广场：最新 / 热门排序
+- 登录评分：登录用户可评分
+- AI 接口预留：润色 / 线索 / 诡计入口
+
+## 数据库 (Cloudflare D1)
+1. 创建 D1 数据库并绑定名称为 `DB`
+2. 执行初始化 SQL
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+wrangler d1 create script-ink
+wrangler d1 execute script-ink --file=./drizzle/0000_init.sql
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 本地开发
+```bash
+npm install
+npm run dev
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> 本项目默认使用 Cloudflare D1 绑定 `DB`，请确保在运行时注入该绑定。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Cloudflare Pages 部署
+1. 将本仓库推送到 GitHub
+2. 在 Cloudflare Pages 中选择该仓库
+3. 构建命令：`npm run build:cf`
+4. 输出目录：`.vercel/output/static`
+5. 在 Pages 设置里添加 D1 绑定：`DB -> script-ink`

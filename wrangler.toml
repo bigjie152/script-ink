@@ -1,0 +1,10 @@
+﻿name = "script-ink"
+compatibility_date = "2024-12-20"
+
+[vars]
+NODE_ENV = "development"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "script-ink"
+database_id = "7d9699aa-83c3-4032-bcc8-bfeff975edaa"
