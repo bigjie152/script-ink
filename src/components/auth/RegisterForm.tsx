@@ -23,7 +23,7 @@ export const RegisterForm = ({ next = "/" }: RegisterFormProps) => {
     });
 
     if (!response.ok) {
-      const data = await response.json().catch(() => null);
+      const data = (await response.json().catch(() => null)) as { message?: string } | null;
       setMessage(data?.message ?? "注册失败");
       return;
     }

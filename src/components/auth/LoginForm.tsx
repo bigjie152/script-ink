@@ -22,7 +22,7 @@ export const LoginForm = ({ next = "/" }: LoginFormProps) => {
     });
 
     if (!response.ok) {
-      const data = await response.json().catch(() => null);
+      const data = (await response.json().catch(() => null)) as { message?: string } | null;
       setMessage(data?.message ?? "登录失败");
       return;
     }
