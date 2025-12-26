@@ -42,27 +42,19 @@ export async function POST(request: Request, { params }: RouteContext) {
   const now = Date.now();
 
   if (existing.length > 0) {
-    await db
-      .update(ratings)
-      .set({
-        logicScore,
-        proseScore,
-        trickScore,
-        updatedAt: now,
-      })
-      .where(eq(ratings.id, existing[0].id));
-  } else {
-    await db.insert(ratings).values({
-      id: crypto.randomUUID(),
-      scriptId: id,
-      userId: user.id,
-      logicScore,
-      proseScore,
-      trickScore,
-      createdAt: now,
-      updatedAt: now,
-    });
+    return NextResponse.json({ message: "你已经评分过了" }, { status: 409 });
   }
+
+  await db.insert(ratings).values({
+    id: crypto.randomUUID(),
+    scriptId: id,
+    userId: user.id,
+    logicScore,
+    proseScore,
+    trickScore,
+    createdAt: now,
+    updatedAt: now,
+  });
 
   return NextResponse.json({ ok: true });
 }
@@ -71,5 +63,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   const { id } = await params;
   const db = getDb();
   const rows = await db.select().from(ratings).where(eq(ratings.scriptId, id));
-  return NextResponse.json({ count: rows.length });
+  const user = await getCurrentUser();
+  const hasRated = rows.some((row) => row.userId === user?.id);
+  return NextResponse.json({ count: rows.length, hasRated });
 }

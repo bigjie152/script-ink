@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { DeleteScriptButton } from "@/components/scripts/DeleteScriptButton";
 import { getCurrentUser } from "@/lib/auth";
 import { getAuthorScripts } from "@/lib/data";
 import { formatDate } from "@/lib/utils";
@@ -66,6 +67,7 @@ export default async function MyScriptsPage() {
                     <Button>公开页</Button>
                   </Link>
                 )}
+                <DeleteScriptButton scriptId={script.id} />
               </div>
             </Card>
           ))}

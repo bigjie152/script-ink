@@ -1,8 +1,8 @@
 ﻿import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq, ne, or, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { clues, roles, scriptSections, scripts } from "@/lib/db/schema";
+import { clues, ratings, roles, scriptSections, scriptTags, scripts } from "@/lib/db/schema";
 import { getScriptDetail } from "@/lib/data";
 import { normalizeTags } from "@/lib/utils";
 import { syncScriptTags } from "@/lib/tags";
@@ -160,6 +160,47 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
   const tags = normalizeTags(tagsInput);
   await syncScriptTags(id, tags);
+
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(_request: Request, { params }: RouteContext) {
+  const { id } = await params;
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ message: "请先登录" }, { status: 401 });
+  }
+
+  const detail = await getScriptDetail(id);
+  if (!detail) {
+    return NextResponse.json({ message: "未找到剧本" }, { status: 404 });
+  }
+
+  if (detail.script.authorId !== user.id) {
+    return NextResponse.json({ message: "无权限" }, { status: 403 });
+  }
+
+  const db = getDb();
+  const forkRows = await db
+    .select({ count: sql<number>`count(*)`.mapWith(Number) })
+    .from(scripts)
+    .where(
+      or(
+        eq(scripts.parentId, id),
+        and(eq(scripts.rootId, id), ne(scripts.id, id))
+      )
+    );
+
+  if ((forkRows[0]?.count ?? 0) > 0) {
+    return NextResponse.json({ message: "已有 Fork，无法删除" }, { status: 409 });
+  }
+
+  await db.delete(ratings).where(eq(ratings.scriptId, id));
+  await db.delete(scriptTags).where(eq(scriptTags.scriptId, id));
+  await db.delete(clues).where(eq(clues.scriptId, id));
+  await db.delete(roles).where(eq(roles.scriptId, id));
+  await db.delete(scriptSections).where(eq(scriptSections.scriptId, id));
+  await db.delete(scripts).where(eq(scripts.id, id));
 
   return NextResponse.json({ ok: true });
 }

@@ -33,9 +33,10 @@ export default async function Home({ searchParams }: HomePageProps) {
             href={{ pathname: "/", query: { sort: "latest" } }}
             className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
               sort === "latest"
-                ? "bg-ink-900 text-white"
+                ? "bg-ink-900 text-paper-50 shadow-sm"
                 : "border border-ink-200 text-ink-700 hover:border-ink-500"
             }`}
+            aria-current={sort === "latest" ? "page" : undefined}
           >
             最新发布
           </Link>
@@ -43,9 +44,10 @@ export default async function Home({ searchParams }: HomePageProps) {
             href={{ pathname: "/", query: { sort: "hot" } }}
             className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
               sort === "hot"
-                ? "bg-ink-900 text-white"
+                ? "bg-ink-900 text-paper-50 shadow-sm"
                 : "border border-ink-200 text-ink-700 hover:border-ink-500"
             }`}
+            aria-current={sort === "hot" ? "page" : undefined}
           >
             热门剧本
           </Link>
