@@ -61,7 +61,7 @@ export const clearSession = async (sessionId?: string) => {
 };
 
 export const getCurrentUser = async () => {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
   if (!sessionId) return null;
 
@@ -89,7 +89,7 @@ export const getCurrentUser = async () => {
   return userRows[0] ?? null;
 };
 
-export const getSessionIdFromCookies = () => {
-  const cookieStore = cookies();
+export const getSessionIdFromCookies = async () => {
+  const cookieStore = await cookies();
   return cookieStore.get(SESSION_COOKIE)?.value;
 };

@@ -6,7 +6,7 @@ import { SESSION_COOKIE } from "@/lib/utils";
 export const runtime = "edge";
 
 export async function POST() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
   await clearSession(sessionId);
 
