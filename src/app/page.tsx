@@ -37,6 +37,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                 : "border border-ink-200 text-ink-700 hover:border-ink-500"
             }`}
             aria-current={sort === "latest" ? "page" : undefined}
+            style={sort === "latest" ? { color: "#fdfaf5" } : undefined}
           >
             最新发布
           </Link>
@@ -48,6 +49,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                 : "border border-ink-200 text-ink-700 hover:border-ink-500"
             }`}
             aria-current={sort === "hot" ? "page" : undefined}
+            style={sort === "hot" ? { color: "#fdfaf5" } : undefined}
           >
             热门剧本
           </Link>
