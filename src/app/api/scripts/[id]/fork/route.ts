@@ -8,16 +8,17 @@ import { syncScriptTags } from "@/lib/tags";
 export const runtime = "edge";
 
 type RouteContext = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export async function POST(_request: Request, { params }: RouteContext) {
+  const { id } = await params;
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ message: "请先登录" }, { status: 401 });
   }
 
-  const detail = await getScriptDetail(params.id);
+  const detail = await getScriptDetail(id);
   if (!detail) {
     return NextResponse.json({ message: "未找到剧本" }, { status: 404 });
   }

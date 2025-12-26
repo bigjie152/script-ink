@@ -10,11 +10,12 @@ import { syncScriptTags } from "@/lib/tags";
 export const runtime = "edge";
 
 type RouteContext = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export async function GET(_request: Request, { params }: RouteContext) {
-  const detail = await getScriptDetail(params.id);
+  const { id } = await params;
+  const detail = await getScriptDetail(id);
   if (!detail) {
     return NextResponse.json({ message: "未找到剧本" }, { status: 404 });
   }
@@ -36,12 +37,13 @@ export async function GET(_request: Request, { params }: RouteContext) {
 }
 
 export async function PUT(request: Request, { params }: RouteContext) {
+  const { id } = await params;
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ message: "请先登录" }, { status: 401 });
   }
 
-  const detail = await getScriptDetail(params.id);
+  const detail = await getScriptDetail(id);
   if (!detail) {
     return NextResponse.json({ message: "未找到剧本" }, { status: 404 });
   }
@@ -76,7 +78,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
       allowFork: allowFork ? 1 : 0,
       updatedAt: now,
     })
-    .where(eq(scripts.id, params.id));
+    .where(eq(scripts.id, id));
 
   const existingSections = detail.sections;
   const outlineSection = existingSections.find((section) => section.sectionType === "outline");
@@ -90,7 +92,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
   } else {
     await db.insert(scriptSections).values({
       id: crypto.randomUUID(),
-      scriptId: params.id,
+      scriptId: id,
       sectionType: "outline",
       contentMd: String(sections.outline ?? ""),
     });
@@ -104,17 +106,17 @@ export async function PUT(request: Request, { params }: RouteContext) {
   } else {
     await db.insert(scriptSections).values({
       id: crypto.randomUUID(),
-      scriptId: params.id,
+      scriptId: id,
       sectionType: "dm",
       contentMd: String(sections.dm ?? ""),
     });
   }
 
-  await db.delete(roles).where(eq(roles.scriptId, params.id));
+  await db.delete(roles).where(eq(roles.scriptId, id));
   const roleRows = rolesInput
     .map((role: any) => ({
       id: String(role.id ?? crypto.randomUUID()),
-      scriptId: params.id,
+      scriptId: id,
       name: String(role.name ?? "").trim(),
       contentMd: String(role.contentMd ?? ""),
     }))
@@ -124,11 +126,11 @@ export async function PUT(request: Request, { params }: RouteContext) {
     await db.insert(roles).values(roleRows);
   }
 
-  await db.delete(clues).where(eq(clues.scriptId, params.id));
+  await db.delete(clues).where(eq(clues.scriptId, id));
   const clueRows = cluesInput
     .map((clue: any) => ({
       id: String(clue.id ?? crypto.randomUUID()),
-      scriptId: params.id,
+      scriptId: id,
       title: String(clue.title ?? "").trim(),
       contentMd: String(clue.contentMd ?? ""),
     }))
@@ -139,7 +141,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
   }
 
   const tags = normalizeTags(tagsInput);
-  await syncScriptTags(params.id, tags);
+  await syncScriptTags(id, tags);
 
   return NextResponse.json({ ok: true });
 }

@@ -8,10 +8,11 @@ import { clampScore } from "@/lib/utils";
 export const runtime = "edge";
 
 type RouteContext = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export async function POST(request: Request, { params }: RouteContext) {
+  const { id } = await params;
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ message: "请先登录" }, { status: 401 });
@@ -23,7 +24,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const trickScore = clampScore(Number(body?.trickScore ?? 0));
 
   const db = getDb();
-  const scriptRows = await db.select().from(scripts).where(eq(scripts.id, params.id)).limit(1);
+  const scriptRows = await db.select().from(scripts).where(eq(scripts.id, id)).limit(1);
   if (scriptRows.length === 0) {
     return NextResponse.json({ message: "未找到剧本" }, { status: 404 });
   }
@@ -35,7 +36,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const existing = await db
     .select()
     .from(ratings)
-    .where(and(eq(ratings.scriptId, params.id), eq(ratings.userId, user.id)))
+    .where(and(eq(ratings.scriptId, id), eq(ratings.userId, user.id)))
     .limit(1);
 
   const now = Date.now();
@@ -53,7 +54,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   } else {
     await db.insert(ratings).values({
       id: crypto.randomUUID(),
-      scriptId: params.id,
+      scriptId: id,
       userId: user.id,
       logicScore,
       proseScore,
@@ -67,7 +68,8 @@ export async function POST(request: Request, { params }: RouteContext) {
 }
 
 export async function GET(_request: Request, { params }: RouteContext) {
+  const { id } = await params;
   const db = getDb();
-  const rows = await db.select().from(ratings).where(eq(ratings.scriptId, params.id));
+  const rows = await db.select().from(ratings).where(eq(ratings.scriptId, id));
   return NextResponse.json({ count: rows.length });
 }
