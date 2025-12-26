@@ -14,12 +14,13 @@ import { formatDate } from "@/lib/utils";
 export const runtime = "edge";
 
 type ScriptPageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export default async function ScriptPage({ params }: ScriptPageProps) {
+  const { id } = await params;
   const user = await getCurrentUser();
-  const detail = await getScriptDetail(params.id);
+  const detail = await getScriptDetail(id);
 
   if (!detail) {
     notFound();

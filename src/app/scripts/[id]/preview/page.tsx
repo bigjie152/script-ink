@@ -12,22 +12,23 @@ import { formatDate } from "@/lib/utils";
 export const runtime = "edge";
 
 type PreviewPageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export default async function PreviewScriptPage({ params }: PreviewPageProps) {
+  const { id } = await params;
   const user = await getCurrentUser();
   if (!user) {
-    redirect(`/login?next=/scripts/${params.id}/preview`);
+    redirect(`/login?next=/scripts/${id}/preview`);
   }
 
-  const detail = await getScriptDetail(params.id);
+  const detail = await getScriptDetail(id);
   if (!detail) {
     notFound();
   }
 
   if (detail.script.authorId !== user.id) {
-    redirect(`/scripts/${params.id}`);
+    redirect(`/scripts/${id}`);
   }
 
   const outline = detail.sections.find((section) => section.sectionType === "outline")?.contentMd ?? "";

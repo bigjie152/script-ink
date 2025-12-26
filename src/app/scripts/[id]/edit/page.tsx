@@ -6,22 +6,23 @@ import { getScriptDetail } from "@/lib/data";
 export const runtime = "edge";
 
 type EditPageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export default async function EditScriptPage({ params }: EditPageProps) {
+  const { id } = await params;
   const user = await getCurrentUser();
   if (!user) {
-    redirect(`/login?next=/scripts/${params.id}/edit`);
+    redirect(`/login?next=/scripts/${id}/edit`);
   }
 
-  const detail = await getScriptDetail(params.id);
+  const detail = await getScriptDetail(id);
   if (!detail) {
     notFound();
   }
 
   if (detail.script.authorId !== user.id) {
-    redirect(`/scripts/${params.id}`);
+    redirect(`/scripts/${id}`);
   }
 
   return (
