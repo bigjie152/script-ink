@@ -16,8 +16,8 @@ const displayFont = Noto_Serif_SC({
 });
 
 export const metadata: Metadata = {
-  title: "鍓ф湰澧ㄥ潑 Script Ink",
-  description: "鍓ф湰鏉€鍒涗綔涓庡崗浣滃钩鍙?,
+  title: "剧本墨坊 Script Ink",
+  description: "剧本杀创作与协作平台",
 };
 
 export const runtime = "edge";
