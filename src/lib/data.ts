@@ -131,12 +131,13 @@ export const getCommunityScripts = async ({ sort, query, tag }: CommunityFilters
 
   const conditions = [eq(scripts.isPublic, 1)];
   if (query) {
-    conditions.push(
-      or(
-        like(scripts.title, `%${query}%`),
-        like(scripts.summary, `%${query}%`)
-      )
+    const keywordFilter = or(
+      like(scripts.title, `%${query}%`),
+      like(scripts.summary, `%${query}%`)
     );
+    if (keywordFilter) {
+      conditions.push(keywordFilter);
+    }
   }
   if (tagScriptIds) {
     conditions.push(inArray(scripts.id, tagScriptIds));
