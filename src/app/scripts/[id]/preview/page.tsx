@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { MarkdownBlock } from "@/components/scripts/MarkdownBlock";
+import { PublishButton } from "@/components/scripts/PublishButton";
 import { getCurrentUser } from "@/lib/auth";
 import { getScriptDetail } from "@/lib/data";
 import { linkifyMentions } from "@/lib/markdown";
@@ -46,10 +47,12 @@ export default async function PreviewScriptPage({ params }: PreviewPageProps) {
           <Link href={`/scripts/${detail.script.id}/edit`}>
             <Button variant="outline">返回编辑</Button>
           </Link>
-          {detail.script.isPublic === 1 && (
+          {detail.script.isPublic === 1 ? (
             <Link href={`/scripts/${detail.script.id}`}>
               <Button>进入公开页面</Button>
             </Link>
+          ) : (
+            <PublishButton scriptId={detail.script.id} />
           )}
         </div>
       </Card>
