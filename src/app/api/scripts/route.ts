@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "请先登录" }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => null);
+  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const title = String(body?.title ?? "").trim();
   const summary = String(body?.summary ?? "").trim();
   const tagInput = String(body?.tags ?? "");

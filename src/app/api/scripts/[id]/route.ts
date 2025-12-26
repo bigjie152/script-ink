@@ -52,7 +52,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
     return NextResponse.json({ message: "无权限" }, { status: 403 });
   }
 
-  const body = await request.json().catch(() => null);
+  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const title = String(body?.title ?? "").trim();
   const summary = String(body?.summary ?? "").trim();
   const isPublic = Boolean(body?.isPublic);

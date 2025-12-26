@@ -18,7 +18,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ message: "请先登录" }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => null);
+  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const logicScore = clampScore(Number(body?.logicScore ?? 0));
   const proseScore = clampScore(Number(body?.proseScore ?? 0));
   const trickScore = clampScore(Number(body?.trickScore ?? 0));

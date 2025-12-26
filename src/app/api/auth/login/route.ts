@@ -8,7 +8,7 @@ import { SESSION_COOKIE } from "@/lib/utils";
 export const runtime = "edge";
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null);
+  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const username = String(body?.username ?? "").trim();
   const password = String(body?.password ?? "");
 
