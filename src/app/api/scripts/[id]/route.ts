@@ -57,7 +57,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
   const summary = String(body?.summary ?? "").trim();
   const isPublic = Boolean(body?.isPublic);
   const allowFork = Boolean(body?.allowFork);
-  const sections = body?.sections ?? {};
+  const sections = (body?.sections ?? {}) as Record<string, unknown>;
   const rolesInput = Array.isArray(body?.roles) ? body.roles : [];
   const cluesInput = Array.isArray(body?.clues) ? body.clues : [];
   const tagsInput = String(body?.tags ?? "");
@@ -84,31 +84,34 @@ export async function PUT(request: Request, { params }: RouteContext) {
   const outlineSection = existingSections.find((section) => section.sectionType === "outline");
   const dmSection = existingSections.find((section) => section.sectionType === "dm");
 
+  const outlineContent = String(sections.outline ?? "");
+  const dmContent = String(sections.dm ?? "");
+
   if (outlineSection) {
     await db
       .update(scriptSections)
-      .set({ contentMd: String(sections.outline ?? "") })
+      .set({ contentMd: outlineContent })
       .where(eq(scriptSections.id, outlineSection.id));
   } else {
     await db.insert(scriptSections).values({
       id: crypto.randomUUID(),
       scriptId: id,
       sectionType: "outline",
-      contentMd: String(sections.outline ?? ""),
+      contentMd: outlineContent,
     });
   }
 
   if (dmSection) {
     await db
       .update(scriptSections)
-      .set({ contentMd: String(sections.dm ?? "") })
+      .set({ contentMd: dmContent })
       .where(eq(scriptSections.id, dmSection.id));
   } else {
     await db.insert(scriptSections).values({
       id: crypto.randomUUID(),
       scriptId: id,
       sectionType: "dm",
-      contentMd: String(sections.dm ?? ""),
+      contentMd: dmContent,
     });
   }
 
