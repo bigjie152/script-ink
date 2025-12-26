@@ -58,8 +58,23 @@ export async function PUT(request: Request, { params }: RouteContext) {
   const isPublic = Boolean(body?.isPublic);
   const allowFork = Boolean(body?.allowFork);
   const sections = (body?.sections ?? {}) as Record<string, unknown>;
-  const rolesInput = Array.isArray(body?.roles) ? body.roles : [];
-  const cluesInput = Array.isArray(body?.clues) ? body.clues : [];
+  type RoleInput = {
+    id?: string;
+    name?: string;
+    contentMd?: string;
+  };
+  type ClueInput = {
+    id?: string;
+    title?: string;
+    contentMd?: string;
+  };
+
+  const rolesInput = Array.isArray(body?.roles)
+    ? (body.roles as RoleInput[])
+    : [];
+  const cluesInput = Array.isArray(body?.clues)
+    ? (body.clues as ClueInput[])
+    : [];
   const tagsInput = String(body?.tags ?? "");
 
   if (!title) {
@@ -117,13 +132,13 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
   await db.delete(roles).where(eq(roles.scriptId, id));
   const roleRows = rolesInput
-    .map((role: any) => ({
+    .map((role) => ({
       id: String(role.id ?? crypto.randomUUID()),
       scriptId: id,
       name: String(role.name ?? "").trim(),
       contentMd: String(role.contentMd ?? ""),
     }))
-    .filter((role: any) => role.name || role.contentMd);
+    .filter((role) => role.name || role.contentMd);
 
   if (roleRows.length > 0) {
     await db.insert(roles).values(roleRows);
@@ -131,13 +146,13 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
   await db.delete(clues).where(eq(clues.scriptId, id));
   const clueRows = cluesInput
-    .map((clue: any) => ({
+    .map((clue) => ({
       id: String(clue.id ?? crypto.randomUUID()),
       scriptId: id,
       title: String(clue.title ?? "").trim(),
       contentMd: String(clue.contentMd ?? ""),
     }))
-    .filter((clue: any) => clue.title || clue.contentMd);
+    .filter((clue) => clue.title || clue.contentMd);
 
   if (clueRows.length > 0) {
     await db.insert(clues).values(clueRows);
