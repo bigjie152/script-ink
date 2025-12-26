@@ -32,7 +32,11 @@ export const ScriptCreateForm = () => {
       return;
     }
 
-    const data = await response.json();
+    const data = (await response.json().catch(() => null)) as { id?: string } | null;
+    if (!data?.id) {
+      setMessage("创建失败");
+      return;
+    }
     window.location.href = `/scripts/${data.id}/edit`;
   };
 

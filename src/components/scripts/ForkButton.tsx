@@ -9,7 +9,11 @@ export const ForkButton = ({ scriptId }: { scriptId: string }) => {
       alert("Fork 失败，请确认是否已登录。");
       return;
     }
-    const data = await response.json();
+    const data = (await response.json().catch(() => null)) as { id?: string } | null;
+    if (!data?.id) {
+      alert("Fork 失败，请稍后再试。");
+      return;
+    }
     window.location.href = `/scripts/${data.id}/edit`;
   };
 
