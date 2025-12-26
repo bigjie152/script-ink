@@ -2,7 +2,6 @@
 import { Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
-import { getCurrentUser } from "@/lib/auth";
 
 const bodyFont = Noto_Sans_SC({
   variable: "--font-body",
@@ -22,17 +21,15 @@ export const metadata: Metadata = {
 
 export const runtime = "edge";
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const user = await getCurrentUser();
-
   return (
     <html lang="zh-CN">
       <body className={`${bodyFont.variable} ${displayFont.variable} antialiased`}>
-        <SiteHeader user={user ? { id: user.id, displayName: user.displayName } : null} />
+        <SiteHeader />
         <main className="mx-auto min-h-screen w-full max-w-6xl px-6 pb-20 pt-8">
           {children}
         </main>

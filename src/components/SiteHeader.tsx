@@ -1,12 +1,39 @@
-﻿import Link from "next/link";
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 
-type SiteHeaderProps = {
-  user?: { id: string; displayName: string } | null;
-};
+type HeaderUser = { id: string; displayName: string } | null;
 
-export const SiteHeader = ({ user }: SiteHeaderProps) => {
+export const SiteHeader = () => {
+  const [user, setUser] = useState<HeaderUser>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadUser = async () => {
+      try {
+        const response = await fetch("/api/auth/me");
+        if (!response.ok) return;
+        const data = (await response.json()) as {
+          user?: { id: string; displayName: string } | null;
+        };
+        if (!cancelled) {
+          setUser(data.user ? { id: data.user.id, displayName: data.user.displayName } : null);
+        }
+      } catch {
+        if (!cancelled) setUser(null);
+      }
+    };
+
+    void loadUser();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <header className="sticky top-0 z-20 border-b border-ink-100/80 bg-paper-50/80 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
