@@ -6,11 +6,12 @@ export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
 type HomePageProps = {
-  searchParams?: { sort?: string };
+  searchParams?: Promise<{ sort?: string }>;
 };
 
 export default async function Home({ searchParams }: HomePageProps) {
-  const sort = searchParams?.sort === "hot" ? "hot" : "latest";
+  const resolvedParams = (await searchParams) ?? {};
+  const sort = resolvedParams.sort === "hot" ? "hot" : "latest";
   const scripts = await getCommunityScripts(sort);
 
   return (
