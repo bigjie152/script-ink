@@ -12,6 +12,8 @@ type ScriptCardProps = {
   tags: string[];
   rating: { average: number; count: number; hotScore: number };
   forkCount: number;
+  activeSort?: "latest" | "hot";
+  activeQuery?: string;
 };
 
 export const ScriptCard = ({
@@ -23,6 +25,8 @@ export const ScriptCard = ({
   tags,
   rating,
   forkCount,
+  activeSort = "latest",
+  activeQuery,
 }: ScriptCardProps) => {
   return (
     <Card className="flex h-full flex-col gap-4">
@@ -42,7 +46,21 @@ export const ScriptCard = ({
       </div>
       <div className="flex flex-wrap gap-2">
         {tags.length > 0 ? (
-          tags.map((tag) => <Badge key={tag}>#{tag}</Badge>)
+          tags.map((tag) => (
+            <Link
+              key={tag}
+              href={{
+                pathname: "/",
+                query: {
+                  sort: activeSort,
+                  ...(activeQuery ? { q: activeQuery } : {}),
+                  tag,
+                },
+              }}
+            >
+              <Badge>#{tag}</Badge>
+            </Link>
+          ))
         ) : (
           <span className="text-xs text-ink-400">未设置标签</span>
         )}

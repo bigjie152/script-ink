@@ -1,4 +1,4 @@
-﻿import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, like, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import {
   clues,
@@ -108,8 +108,40 @@ export const getScriptDetail = async (scriptId: string) => {
   };
 };
 
-export const getCommunityScripts = async (sort: "latest" | "hot") => {
+type CommunityFilters = {
+  sort: "latest" | "hot";
+  query?: string;
+  tag?: string;
+};
+
+export const getCommunityScripts = async ({ sort, query, tag }: CommunityFilters) => {
   const db = getDb();
+  let tagScriptIds: string[] | null = null;
+  if (tag) {
+    const tagRows = await db
+      .select({ scriptId: scriptTags.scriptId })
+      .from(scriptTags)
+      .innerJoin(tags, eq(tags.id, scriptTags.tagId))
+      .where(eq(tags.name, tag));
+    tagScriptIds = tagRows.map((row) => row.scriptId);
+    if (tagScriptIds.length === 0) {
+      return [];
+    }
+  }
+
+  const conditions = [eq(scripts.isPublic, 1)];
+  if (query) {
+    conditions.push(
+      or(
+        like(scripts.title, `%${query}%`),
+        like(scripts.summary, `%${query}%`)
+      )
+    );
+  }
+  if (tagScriptIds) {
+    conditions.push(inArray(scripts.id, tagScriptIds));
+  }
+
   const scriptRows = await db
     .select({
       id: scripts.id,
@@ -124,7 +156,7 @@ export const getCommunityScripts = async (sort: "latest" | "hot") => {
     })
     .from(scripts)
     .leftJoin(users, eq(users.id, scripts.authorId))
-    .where(eq(scripts.isPublic, 1));
+    .where(and(...conditions));
 
   const scriptIds = scriptRows.map((row) => row.id);
   if (scriptIds.length === 0) {
