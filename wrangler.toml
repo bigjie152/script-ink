@@ -1,8 +1,11 @@
-﻿name = "script-ink"
+name = "script-ink"
 compatibility_date = "2024-12-20"
 
 [vars]
 NODE_ENV = "development"
+
+[pages]
+pages_build_output_dir = ".vercel/output/static"
 
 [[d1_databases]]
 binding = "DB"
