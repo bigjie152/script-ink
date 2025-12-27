@@ -55,6 +55,9 @@ export const SiteHeader = () => {
               <Link href="/scripts/mine" className="text-ink-600 hover:text-ink-900">
                 我的剧本
               </Link>
+              <Link href="/me" className="text-ink-600 hover:text-ink-900">
+                个人中心
+              </Link>
               <Link href="/scripts/new">
                 <Button>新建剧本</Button>
               </Link>

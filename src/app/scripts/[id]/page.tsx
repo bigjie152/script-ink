@@ -4,11 +4,12 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ForkButton } from "@/components/scripts/ForkButton";
+import { ScriptCollectActions } from "@/components/scripts/ScriptCollectActions";
 import { MarkdownBlock } from "@/components/scripts/MarkdownBlock";
 import { RatingForm } from "@/components/scripts/RatingForm";
 import { CommentsSection } from "@/components/scripts/CommentsSection";
 import { getCurrentUser } from "@/lib/auth";
-import { getScriptDetail, getScriptForkChain } from "@/lib/data";
+import { getScriptCollections, getScriptDetail, getScriptForkChain } from "@/lib/data";
 import { linkifyMentions } from "@/lib/markdown";
 import { formatDate } from "@/lib/utils";
 
@@ -40,6 +41,9 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
   const dm = detail.sections.find((section) => section.sectionType === "dm")?.contentMd ?? "";
   const outlineContent = linkifyMentions(outline, detail.roles, detail.clues);
   const dmContent = linkifyMentions(dm, detail.roles, detail.clues);
+  const collections = detail.script.isPublic === 1
+    ? await getScriptCollections(detail.script.id, user?.id)
+    : null;
 
   return (
     <div className="grid gap-8">
@@ -88,6 +92,32 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
             <span className="text-xs text-ink-500">未设置标签</span>
           )}
         </div>
+        {detail.script.isPublic === 1 && (
+          <div className="flex flex-wrap items-center gap-3 text-sm text-ink-600">
+            {user ? (
+              <ScriptCollectActions
+                scriptId={detail.script.id}
+                initialFavorited={collections?.favorited ?? false}
+                initialBookmarked={collections?.bookmarked ?? false}
+                initialFavoriteCount={collections?.favoriteCount ?? 0}
+                initialBookmarkCount={collections?.bookmarkCount ?? 0}
+              />
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <Link href={`/login?next=/scripts/${detail.script.id}`}>
+                  <Button variant="outline">
+                    收藏 {collections?.favoriteCount ?? 0}
+                  </Button>
+                </Link>
+                <Link href={`/login?next=/scripts/${detail.script.id}`}>
+                  <Button variant="outline">
+                    书签 {collections?.bookmarkCount ?? 0}
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
         <div className="grid gap-3 text-sm text-ink-600 md:grid-cols-3">
           <Card>
             <p className="text-xs uppercase text-ink-500">评分均值</p>

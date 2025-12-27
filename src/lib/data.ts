@@ -1,9 +1,11 @@
-import { and, eq, inArray, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import {
   clues,
   ratings,
   roles,
+  scriptBookmarks,
+  scriptFavorites,
   scriptSections,
   scriptTags,
   scripts,
@@ -108,6 +110,63 @@ export const getScriptDetail = async (scriptId: string) => {
   };
 };
 
+const buildScriptCards = async (scriptRows: {
+  id: string;
+  title: string;
+  summary: string | null;
+  coverUrl: string | null;
+  rootId: string | null;
+  createdAt: number;
+  authorName: string | null;
+  authorId: string;
+  allowFork: number;
+}[]) => {
+  const scriptIds = scriptRows.map((row) => row.id);
+  if (scriptIds.length === 0) {
+    return [];
+  }
+  const ratingsMap = await getRatingSummaries(scriptIds);
+  const rootIds = Array.from(new Set(scriptRows.map((row) => row.rootId ?? row.id)));
+  const db = getDb();
+  const forkRows = await db
+    .select({
+      rootId: scripts.rootId,
+      count: sql<number>`count(*)`.mapWith(Number),
+    })
+    .from(scripts)
+    .where(inArray(scripts.rootId, rootIds))
+    .groupBy(scripts.rootId);
+
+  const forkMap = new Map<string, number>();
+  for (const row of forkRows) {
+    if (!row.rootId) continue;
+    forkMap.set(row.rootId, Math.max(0, row.count - 1));
+  }
+
+  const tagRows = await db
+    .select({ scriptId: scriptTags.scriptId, name: tags.name })
+    .from(scriptTags)
+    .innerJoin(tags, eq(tags.id, scriptTags.tagId))
+    .where(inArray(scriptTags.scriptId, scriptIds));
+
+  const tagMap = new Map<string, string[]>();
+  for (const row of tagRows) {
+    const existing = tagMap.get(row.scriptId) ?? [];
+    existing.push(row.name);
+    tagMap.set(row.scriptId, existing);
+  }
+
+  return scriptRows.map((script) => {
+    const rating = ratingsMap.get(script.id) ?? { average: 0, count: 0, hotScore: 0 };
+    return {
+      ...script,
+      rating,
+      forkCount: forkMap.get(script.rootId ?? script.id) ?? 0,
+      tags: tagMap.get(script.id) ?? [],
+    };
+  });
+};
+
 type CommunityFilters = {
   sort: "latest" | "hot";
   query?: string;
@@ -159,51 +218,7 @@ export const getCommunityScripts = async ({ sort, query, tag }: CommunityFilters
     .leftJoin(users, eq(users.id, scripts.authorId))
     .where(and(...conditions));
 
-  const scriptIds = scriptRows.map((row) => row.id);
-  if (scriptIds.length === 0) {
-    return [];
-  }
-  const ratingsMap = await getRatingSummaries(scriptIds);
-  const rootIds = Array.from(
-    new Set(scriptRows.map((row) => row.rootId ?? row.id))
-  );
-  const forkRows = await db
-    .select({
-      rootId: scripts.rootId,
-      count: sql<number>`count(*)`.mapWith(Number),
-    })
-    .from(scripts)
-    .where(inArray(scripts.rootId, rootIds))
-    .groupBy(scripts.rootId);
-
-  const forkMap = new Map<string, number>();
-  for (const row of forkRows) {
-    if (!row.rootId) continue;
-    forkMap.set(row.rootId, Math.max(0, row.count - 1));
-  }
-
-  const tagRows = await db
-    .select({ scriptId: scriptTags.scriptId, name: tags.name })
-    .from(scriptTags)
-    .innerJoin(tags, eq(tags.id, scriptTags.tagId))
-    .where(inArray(scriptTags.scriptId, scriptIds));
-
-  const tagMap = new Map<string, string[]>();
-  for (const row of tagRows) {
-    const existing = tagMap.get(row.scriptId) ?? [];
-    existing.push(row.name);
-    tagMap.set(row.scriptId, existing);
-  }
-
-  const merged = scriptRows.map((script) => {
-    const rating = ratingsMap.get(script.id) ?? { average: 0, count: 0, hotScore: 0 };
-    return {
-      ...script,
-      rating,
-      forkCount: forkMap.get(script.rootId ?? script.id) ?? 0,
-      tags: tagMap.get(script.id) ?? [],
-    };
-  });
+  const merged = await buildScriptCards(scriptRows);
 
   if (sort === "hot") {
     return merged.sort((a, b) => b.rating.hotScore - a.rating.hotScore);
@@ -234,4 +249,94 @@ export const getAuthorScripts = async (authorId: string) => {
     .select()
     .from(scripts)
     .where(eq(scripts.authorId, authorId));
+};
+
+export const getScriptCollections = async (scriptId: string, userId?: string) => {
+  const db = getDb();
+  const favoriteRows = await db
+    .select({ count: sql<number>`count(*)`.mapWith(Number) })
+    .from(scriptFavorites)
+    .where(eq(scriptFavorites.scriptId, scriptId));
+  const bookmarkRows = await db
+    .select({ count: sql<number>`count(*)`.mapWith(Number) })
+    .from(scriptBookmarks)
+    .where(eq(scriptBookmarks.scriptId, scriptId));
+  let favorited = false;
+  let bookmarked = false;
+  if (userId) {
+    const favoriteUserRows = await db
+      .select()
+      .from(scriptFavorites)
+      .where(and(eq(scriptFavorites.scriptId, scriptId), eq(scriptFavorites.userId, userId)))
+      .limit(1);
+    const bookmarkUserRows = await db
+      .select()
+      .from(scriptBookmarks)
+      .where(and(eq(scriptBookmarks.scriptId, scriptId), eq(scriptBookmarks.userId, userId)))
+      .limit(1);
+    favorited = favoriteUserRows.length > 0;
+    bookmarked = bookmarkUserRows.length > 0;
+  }
+  return {
+    favoriteCount: favoriteRows[0]?.count ?? 0,
+    bookmarkCount: bookmarkRows[0]?.count ?? 0,
+    favorited,
+    bookmarked,
+  };
+};
+
+export const getFavoriteScripts = async (userId: string) => {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: scripts.id,
+      title: scripts.title,
+      summary: scripts.summary,
+      coverUrl: scripts.coverUrl,
+      rootId: scripts.rootId,
+      createdAt: scripts.createdAt,
+      authorName: users.displayName,
+      authorId: scripts.authorId,
+      allowFork: scripts.allowFork,
+      savedAt: scriptFavorites.createdAt,
+    })
+    .from(scriptFavorites)
+    .innerJoin(scripts, eq(scripts.id, scriptFavorites.scriptId))
+    .leftJoin(users, eq(users.id, scripts.authorId))
+    .where(eq(scriptFavorites.userId, userId))
+    .orderBy(desc(scriptFavorites.createdAt));
+
+  const merged = await buildScriptCards(rows);
+  return merged.map((item, index) => ({
+    ...item,
+    savedAt: rows[index].savedAt,
+  }));
+};
+
+export const getBookmarkScripts = async (userId: string) => {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: scripts.id,
+      title: scripts.title,
+      summary: scripts.summary,
+      coverUrl: scripts.coverUrl,
+      rootId: scripts.rootId,
+      createdAt: scripts.createdAt,
+      authorName: users.displayName,
+      authorId: scripts.authorId,
+      allowFork: scripts.allowFork,
+      savedAt: scriptBookmarks.createdAt,
+    })
+    .from(scriptBookmarks)
+    .innerJoin(scripts, eq(scripts.id, scriptBookmarks.scriptId))
+    .leftJoin(users, eq(users.id, scripts.authorId))
+    .where(eq(scriptBookmarks.userId, userId))
+    .orderBy(desc(scriptBookmarks.createdAt));
+
+  const merged = await buildScriptCards(rows);
+  return merged.map((item, index) => ({
+    ...item,
+    savedAt: rows[index].savedAt,
+  }));
 };
