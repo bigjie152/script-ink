@@ -9,7 +9,7 @@ import { MarkdownBlock } from "@/components/scripts/MarkdownBlock";
 import { RatingForm } from "@/components/scripts/RatingForm";
 import { CommentsSection } from "@/components/scripts/CommentsSection";
 import { getCurrentUser } from "@/lib/auth";
-import { getScriptCollections, getScriptDetail, getScriptForkChain } from "@/lib/data";
+import { getFavoriteFolders, getScriptCollections, getScriptDetail, getScriptForkChain } from "@/lib/data";
 import { linkifyMentions } from "@/lib/markdown";
 import { formatDate } from "@/lib/utils";
 
@@ -44,6 +44,7 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
   const collections = detail.script.isPublic === 1
     ? await getScriptCollections(detail.script.id, user?.id)
     : null;
+  const favoriteFolders = user ? await getFavoriteFolders(user.id) : [];
 
   return (
     <div className="grid gap-8">
@@ -98,27 +99,18 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
               <ScriptCollectActions
                 scriptId={detail.script.id}
                 initialFavorited={collections?.favorited ?? false}
-                initialBookmarked={collections?.bookmarked ?? false}
                 initialFavoriteCount={collections?.favoriteCount ?? 0}
-                initialBookmarkCount={collections?.bookmarkCount ?? 0}
+                initialFolder={collections?.favoriteFolder ?? "默认收藏夹"}
+                folders={favoriteFolders.map((folder) => folder.name)}
               />
             ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <Link href={`/login?next=/scripts/${detail.script.id}`}>
-                  <Button variant="outline">
-                    收藏 {collections?.favoriteCount ?? 0}
-                  </Button>
-                </Link>
-                <Link href={`/login?next=/scripts/${detail.script.id}`}>
-                  <Button variant="outline">
-                    书签 {collections?.bookmarkCount ?? 0}
-                  </Button>
-                </Link>
-              </div>
+              <Link href={`/login?next=/scripts/${detail.script.id}`}>
+                <Button variant="outline">收藏 {collections?.favoriteCount ?? 0}</Button>
+              </Link>
             )}
           </div>
         )}
-        <div className="grid gap-3 text-sm text-ink-600 md:grid-cols-3">
+        <div className="grid gap-3 text-sm text-ink-600 md:grid-cols-4">
           <Card>
             <p className="text-xs uppercase text-ink-500">评分均值</p>
             <p className="mt-2 text-2xl font-display text-ink-900">
@@ -128,6 +120,12 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
           <Card>
             <p className="text-xs uppercase text-ink-500">评分人数</p>
             <p className="mt-2 text-2xl font-display text-ink-900">{detail.rating.count}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase text-ink-500">收藏数</p>
+            <p className="mt-2 text-2xl font-display text-ink-900">
+              {collections?.favoriteCount ?? 0}
+            </p>
           </Card>
           <Card>
             <p className="text-xs uppercase text-ink-500">Fork 可用</p>

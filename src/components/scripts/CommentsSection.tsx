@@ -87,7 +87,9 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
     const list = items
       .filter((item) => !item.parentId)
       .sort((a, b) => a.createdAt - b.createdAt);
-    return list.filter((item) => !item.isDeleted || (replyMap.get(item.id)?.length ?? 0) > 0);
+    return list.filter(
+      (item) => !item.isDeleted || (replyMap.get(item.id)?.length ?? 0) > 0
+    );
   }, [items, replyMap]);
 
   const toggleExpanded = (id: string) => {
@@ -263,7 +265,8 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                     <div className="text-xs text-ink-400">该评论已删除</div>
                   ) : (
                     <div className="text-xs text-ink-500">
-                      <span className="font-semibold text-ink-700">{comment.authorName}</span> · {formatDateTime(comment.createdAt)}
+                      <span className="font-semibold text-ink-700">{comment.authorName}</span> ·{" "}
+                      {formatDateTime(comment.createdAt)}
                     </div>
                   )}
                   {!showPlaceholder && (
@@ -271,7 +274,11 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                       <button
                         type="button"
                         onClick={() => handleLike(comment.id)}
-                        className={`rounded-full px-3 py-1 ${comment.liked ? "bg-ink-900 text-paper-50" : "border border-ink-200 text-ink-600 hover:border-ink-500"}`}
+                        className={`rounded-full px-3 py-1 ${
+                          comment.liked
+                            ? "bg-ink-900 text-paper-50"
+                            : "border border-ink-200 text-ink-600 hover:border-ink-500"
+                        }`}
                         disabled={!canLike}
                       >
                         赞 {comment.likeCount}
@@ -378,13 +385,20 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                             >
                               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-500">
                                 <span>
-                                  <span className="font-semibold text-ink-700">{reply.authorName}</span> · {formatDateTime(reply.createdAt)}
+                                  <span className="font-semibold text-ink-700">
+                                    {reply.authorName}
+                                  </span>{" "}
+                                  · {formatDateTime(reply.createdAt)}
                                 </span>
                                 <div className="flex flex-wrap items-center gap-2">
                                   <button
                                     type="button"
                                     onClick={() => handleLike(reply.id)}
-                                    className={`rounded-full px-3 py-1 ${reply.liked ? "bg-ink-900 text-paper-50" : "border border-ink-200 text-ink-600 hover:border-ink-500"}`}
+                                    className={`rounded-full px-3 py-1 ${
+                                      reply.liked
+                                        ? "bg-ink-900 text-paper-50"
+                                        : "border border-ink-200 text-ink-600 hover:border-ink-500"
+                                    }`}
                                     disabled={!canLikeReply}
                                   >
                                     赞 {reply.likeCount}

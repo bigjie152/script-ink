@@ -4,7 +4,6 @@ import {
   clues,
   ratings,
   roles,
-  scriptBookmarks,
   scriptFavorites,
   scriptSections,
   scriptTags,
@@ -13,6 +12,8 @@ import {
   users,
 } from "@/lib/db/schema";
 import { computeHotScore } from "@/lib/utils";
+
+const DEFAULT_FAVORITE_FOLDER = "默认收藏夹";
 
 export type RatingSummary = {
   scriptId: string;
@@ -257,36 +258,55 @@ export const getScriptCollections = async (scriptId: string, userId?: string) =>
     .select({ count: sql<number>`count(*)`.mapWith(Number) })
     .from(scriptFavorites)
     .where(eq(scriptFavorites.scriptId, scriptId));
-  const bookmarkRows = await db
-    .select({ count: sql<number>`count(*)`.mapWith(Number) })
-    .from(scriptBookmarks)
-    .where(eq(scriptBookmarks.scriptId, scriptId));
   let favorited = false;
-  let bookmarked = false;
+  let favoriteFolder = DEFAULT_FAVORITE_FOLDER;
   if (userId) {
     const favoriteUserRows = await db
-      .select()
+      .select({ folder: scriptFavorites.folder })
       .from(scriptFavorites)
       .where(and(eq(scriptFavorites.scriptId, scriptId), eq(scriptFavorites.userId, userId)))
       .limit(1);
-    const bookmarkUserRows = await db
-      .select()
-      .from(scriptBookmarks)
-      .where(and(eq(scriptBookmarks.scriptId, scriptId), eq(scriptBookmarks.userId, userId)))
-      .limit(1);
     favorited = favoriteUserRows.length > 0;
-    bookmarked = bookmarkUserRows.length > 0;
+    if (favoriteUserRows[0]?.folder) {
+      favoriteFolder = favoriteUserRows[0].folder;
+    }
   }
   return {
     favoriteCount: favoriteRows[0]?.count ?? 0,
-    bookmarkCount: bookmarkRows[0]?.count ?? 0,
     favorited,
-    bookmarked,
+    favoriteFolder,
   };
 };
 
-export const getFavoriteScripts = async (userId: string) => {
+export const getFavoriteFolders = async (userId: string) => {
   const db = getDb();
+  const rows = await db
+    .select({
+      name: scriptFavorites.folder,
+      count: sql<number>`count(*)`.mapWith(Number),
+      latestAt: sql<number>`max(${scriptFavorites.createdAt})`.mapWith(Number),
+    })
+    .from(scriptFavorites)
+    .where(eq(scriptFavorites.userId, userId))
+    .groupBy(scriptFavorites.folder)
+    .orderBy(desc(sql<number>`max(${scriptFavorites.createdAt})`.mapWith(Number)));
+
+  const mapped = rows.map((row) => ({
+    name: row.name || DEFAULT_FAVORITE_FOLDER,
+    count: row.count,
+    latestAt: row.latestAt,
+  }));
+
+  if (!mapped.find((row) => row.name === DEFAULT_FAVORITE_FOLDER)) {
+    mapped.unshift({ name: DEFAULT_FAVORITE_FOLDER, count: 0, latestAt: 0 });
+  }
+
+  return mapped;
+};
+
+export const getFavoriteScripts = async (userId: string, folder?: string) => {
+  const db = getDb();
+  const resolvedFolder = folder || DEFAULT_FAVORITE_FOLDER;
   const rows = await db
     .select({
       id: scripts.id,
@@ -303,40 +323,13 @@ export const getFavoriteScripts = async (userId: string) => {
     .from(scriptFavorites)
     .innerJoin(scripts, eq(scripts.id, scriptFavorites.scriptId))
     .leftJoin(users, eq(users.id, scripts.authorId))
-    .where(eq(scriptFavorites.userId, userId))
+    .where(and(eq(scriptFavorites.userId, userId), eq(scriptFavorites.folder, resolvedFolder)))
     .orderBy(desc(scriptFavorites.createdAt));
 
   const merged = await buildScriptCards(rows);
   return merged.map((item, index) => ({
     ...item,
     savedAt: rows[index].savedAt,
-  }));
-};
-
-export const getBookmarkScripts = async (userId: string) => {
-  const db = getDb();
-  const rows = await db
-    .select({
-      id: scripts.id,
-      title: scripts.title,
-      summary: scripts.summary,
-      coverUrl: scripts.coverUrl,
-      rootId: scripts.rootId,
-      createdAt: scripts.createdAt,
-      authorName: users.displayName,
-      authorId: scripts.authorId,
-      allowFork: scripts.allowFork,
-      savedAt: scriptBookmarks.createdAt,
-    })
-    .from(scriptBookmarks)
-    .innerJoin(scripts, eq(scripts.id, scriptBookmarks.scriptId))
-    .leftJoin(users, eq(users.id, scripts.authorId))
-    .where(eq(scriptBookmarks.userId, userId))
-    .orderBy(desc(scriptBookmarks.createdAt));
-
-  const merged = await buildScriptCards(rows);
-  return merged.map((item, index) => ({
-    ...item,
-    savedAt: rows[index].savedAt,
+    folder: resolvedFolder,
   }));
 };

@@ -7,6 +7,7 @@
 - Fork 分支机制：追踪 root_id / parent_id
 - 社区广场：最新 / 热门排序
 - 登录评分：登录用户可评分
+- 收藏夹：公开剧本可收藏并分组管理
 - AI 接口预留：润色 / 线索 / 诡计入口
 
 ## 数据库 (Cloudflare D1)
@@ -18,6 +19,7 @@ wrangler d1 create script-ink
 wrangler d1 execute script-ink --file=./drizzle/0000_init.sql
 wrangler d1 execute script-ink --file=./drizzle/0001_comments.sql
 wrangler d1 execute script-ink --file=./drizzle/0002_collections.sql
+wrangler d1 execute script-ink --file=./drizzle/0003_favorites_folder.sql
 ```
 
 ## 本地开发

@@ -123,19 +123,10 @@ export const commentLikes = sqliteTable("comment_likes", {
 export const scriptFavorites = sqliteTable("script_favorites", {
   scriptId: text("script_id").notNull(),
   userId: text("user_id").notNull(),
+  folder: text("folder").notNull(),
   createdAt: integer("created_at").notNull(),
 }, (table) => ({
   pk: primaryKey({ columns: [table.scriptId, table.userId] }),
   scriptIndex: index("script_favorites_script_id_idx").on(table.scriptId),
   userIndex: index("script_favorites_user_id_idx").on(table.userId),
-}));
-
-export const scriptBookmarks = sqliteTable("script_bookmarks", {
-  scriptId: text("script_id").notNull(),
-  userId: text("user_id").notNull(),
-  createdAt: integer("created_at").notNull(),
-}, (table) => ({
-  pk: primaryKey({ columns: [table.scriptId, table.userId] }),
-  scriptIndex: index("script_bookmarks_script_id_idx").on(table.scriptId),
-  userIndex: index("script_bookmarks_user_id_idx").on(table.userId),
 }));

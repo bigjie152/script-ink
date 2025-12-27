@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { CollectionRemoveButton } from "@/components/scripts/CollectionRemoveButton";
 import { getCurrentUser } from "@/lib/auth";
-import { getBookmarkScripts, getFavoriteScripts } from "@/lib/data";
+import { getFavoriteFolders, getFavoriteScripts } from "@/lib/data";
 import { formatDate } from "@/lib/utils";
 
 export const runtime = "edge";
 
 type MePageProps = {
-  searchParams?: Promise<{ tab?: string }>;
+  searchParams?: Promise<{ folder?: string }>;
 };
 
 export default async function MePage({ searchParams }: MePageProps) {
@@ -21,10 +21,12 @@ export default async function MePage({ searchParams }: MePageProps) {
   }
 
   const resolvedParams = (await searchParams) ?? {};
-  const tab = resolvedParams.tab === "bookmark" ? "bookmark" : "favorite";
-  const scripts = tab === "bookmark"
-    ? await getBookmarkScripts(user.id)
-    : await getFavoriteScripts(user.id);
+  const folders = await getFavoriteFolders(user.id);
+  const folderParam = String(resolvedParams.folder ?? "").trim();
+  const activeFolder = folders.find((folder) => folder.name === folderParam)?.name
+    ?? folders[0]?.name
+    ?? "默认收藏夹";
+  const scripts = await getFavoriteScripts(user.id, activeFolder);
 
   return (
     <div className="grid gap-8">
@@ -41,31 +43,24 @@ export default async function MePage({ searchParams }: MePageProps) {
 
       <section className="grid gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href={{ pathname: "/me", query: { tab: "favorite" } }}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-              tab === "favorite"
-                ? "bg-ink-900 text-paper-50 shadow-sm"
-                : "border border-ink-200 text-ink-700 hover:border-ink-500"
-            }`}
-          >
-            收藏
-          </Link>
-          <Link
-            href={{ pathname: "/me", query: { tab: "bookmark" } }}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-              tab === "bookmark"
-                ? "bg-ink-900 text-paper-50 shadow-sm"
-                : "border border-ink-200 text-ink-700 hover:border-ink-500"
-            }`}
-          >
-            书签
-          </Link>
+          {folders.map((folder) => (
+            <Link
+              key={folder.name}
+              href={{ pathname: "/me", query: { folder: folder.name } }}
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                activeFolder === folder.name
+                  ? "bg-ink-900 text-paper-50 shadow-sm"
+                  : "border border-ink-200 text-ink-700 hover:border-ink-500"
+              }`}
+            >
+              {folder.name} · {folder.count}
+            </Link>
+          ))}
         </div>
 
         {scripts.length === 0 ? (
           <Card className="border-dashed border-ink-200 bg-paper-50/80 text-center text-sm text-ink-500">
-            {tab === "favorite" ? "还没有收藏剧本。" : "还没有添加书签。"}
+            这个收藏夹还没有剧本。
           </Card>
         ) : (
           <div className="grid gap-4">
@@ -88,11 +83,8 @@ export default async function MePage({ searchParams }: MePageProps) {
                   </p>
                 </div>
                 <div className="grid gap-2 text-right text-xs text-ink-500">
-                  <span>{tab === "favorite" ? "收藏于" : "书签于"} {formatDate(script.savedAt)}</span>
-                  <CollectionRemoveButton
-                    scriptId={script.id}
-                    type={tab === "favorite" ? "favorite" : "bookmark"}
-                  />
+                  <span>收藏于 {formatDate(script.savedAt)}</span>
+                  <CollectionRemoveButton scriptId={script.id} />
                 </div>
               </Card>
             ))}

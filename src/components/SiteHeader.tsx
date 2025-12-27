@@ -52,14 +52,14 @@ export const SiteHeader = () => {
           </Link>
           {user ? (
             <>
+              <Link href="/scripts/new">
+                <Button>新建剧本</Button>
+              </Link>
               <Link href="/scripts/mine" className="text-ink-600 hover:text-ink-900">
                 我的剧本
               </Link>
               <Link href="/me" className="text-ink-600 hover:text-ink-900">
                 个人中心
-              </Link>
-              <Link href="/scripts/new">
-                <Button>新建剧本</Button>
               </Link>
               <div className="rounded-full bg-paper-100 px-3 py-1 text-xs text-ink-600">
                 {user.displayName}
