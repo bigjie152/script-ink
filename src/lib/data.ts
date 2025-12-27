@@ -2,9 +2,12 @@ import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import {
   clues,
+  comments,
+  commentLikes,
   ratings,
   roles,
   scriptFavorites,
+  scriptLikes,
   scriptSections,
   scriptTags,
   scripts,
@@ -278,6 +281,24 @@ export const getScriptCollections = async (scriptId: string, userId?: string) =>
   };
 };
 
+export const getScriptLikeSummary = async (scriptId: string, userId?: string) => {
+  const db = getDb();
+  const likeRows = await db
+    .select({ count: sql<number>`count(*)`.mapWith(Number) })
+    .from(scriptLikes)
+    .where(eq(scriptLikes.scriptId, scriptId));
+  let liked = false;
+  if (userId) {
+    const userRows = await db
+      .select({ scriptId: scriptLikes.scriptId })
+      .from(scriptLikes)
+      .where(and(eq(scriptLikes.scriptId, scriptId), eq(scriptLikes.userId, userId)))
+      .limit(1);
+    liked = userRows.length > 0;
+  }
+  return { likeCount: likeRows[0]?.count ?? 0, liked };
+};
+
 export const getFavoriteFolders = async (userId: string) => {
   const db = getDb();
   const rows = await db
@@ -331,5 +352,65 @@ export const getFavoriteScripts = async (userId: string, folder?: string) => {
     ...item,
     savedAt: rows[index].savedAt,
     folder: resolvedFolder,
+  }));
+};
+
+export const getLikedScripts = async (userId: string) => {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: scripts.id,
+      title: scripts.title,
+      summary: scripts.summary,
+      coverUrl: scripts.coverUrl,
+      rootId: scripts.rootId,
+      createdAt: scripts.createdAt,
+      authorName: users.displayName,
+      authorId: scripts.authorId,
+      allowFork: scripts.allowFork,
+      likedAt: scriptLikes.createdAt,
+    })
+    .from(scriptLikes)
+    .innerJoin(scripts, eq(scripts.id, scriptLikes.scriptId))
+    .leftJoin(users, eq(users.id, scripts.authorId))
+    .where(eq(scriptLikes.userId, userId))
+    .orderBy(desc(scriptLikes.createdAt));
+
+  const merged = await buildScriptCards(rows);
+  return merged.map((item, index) => ({
+    ...item,
+    likedAt: rows[index].likedAt,
+  }));
+};
+
+export const getUserComments = async (userId: string) => {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: comments.id,
+      scriptId: comments.scriptId,
+      scriptTitle: scripts.title,
+      content: comments.content,
+      isDeleted: comments.isDeleted,
+      createdAt: comments.createdAt,
+      updatedAt: comments.updatedAt,
+      likeCount: sql<number>`count(${commentLikes.commentId})`.mapWith(Number),
+    })
+    .from(comments)
+    .innerJoin(scripts, eq(scripts.id, comments.scriptId))
+    .leftJoin(commentLikes, eq(commentLikes.commentId, comments.id))
+    .where(eq(comments.authorId, userId))
+    .groupBy(comments.id)
+    .orderBy(desc(comments.createdAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    scriptId: row.scriptId,
+    scriptTitle: row.scriptTitle,
+    content: row.content,
+    isDeleted: row.isDeleted === 1,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    likeCount: row.likeCount ?? 0,
   }));
 };

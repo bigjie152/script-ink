@@ -5,11 +5,18 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ForkButton } from "@/components/scripts/ForkButton";
 import { ScriptCollectActions } from "@/components/scripts/ScriptCollectActions";
+import { ScriptLikeButton } from "@/components/scripts/ScriptLikeButton";
 import { MarkdownBlock } from "@/components/scripts/MarkdownBlock";
 import { RatingForm } from "@/components/scripts/RatingForm";
 import { CommentsSection } from "@/components/scripts/CommentsSection";
 import { getCurrentUser } from "@/lib/auth";
-import { getFavoriteFolders, getScriptCollections, getScriptDetail, getScriptForkChain } from "@/lib/data";
+import {
+  getFavoriteFolders,
+  getScriptCollections,
+  getScriptDetail,
+  getScriptForkChain,
+  getScriptLikeSummary,
+} from "@/lib/data";
 import { linkifyMentions } from "@/lib/markdown";
 import { formatDate } from "@/lib/utils";
 
@@ -43,6 +50,9 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
   const dmContent = linkifyMentions(dm, detail.roles, detail.clues);
   const collections = detail.script.isPublic === 1
     ? await getScriptCollections(detail.script.id, user?.id)
+    : null;
+  const likeSummary = detail.script.isPublic === 1
+    ? await getScriptLikeSummary(detail.script.id, user?.id)
     : null;
   const favoriteFolders = user ? await getFavoriteFolders(user.id) : [];
 
@@ -96,17 +106,29 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
         {detail.script.isPublic === 1 && (
           <div className="flex flex-wrap items-center gap-3 text-sm text-ink-600">
             {user ? (
-              <ScriptCollectActions
-                scriptId={detail.script.id}
-                initialFavorited={collections?.favorited ?? false}
-                initialFavoriteCount={collections?.favoriteCount ?? 0}
-                initialFolder={collections?.favoriteFolder ?? "默认收藏夹"}
-                folders={favoriteFolders.map((folder) => folder.name)}
-              />
+              <>
+                <ScriptCollectActions
+                  scriptId={detail.script.id}
+                  initialFavorited={collections?.favorited ?? false}
+                  initialFavoriteCount={collections?.favoriteCount ?? 0}
+                  initialFolder={collections?.favoriteFolder ?? "默认收藏夹"}
+                  folders={favoriteFolders.map((folder) => folder.name)}
+                />
+                <ScriptLikeButton
+                  scriptId={detail.script.id}
+                  initialLiked={likeSummary?.liked ?? false}
+                  initialLikeCount={likeSummary?.likeCount ?? 0}
+                />
+              </>
             ) : (
-              <Link href={`/login?next=/scripts/${detail.script.id}`}>
-                <Button variant="outline">收藏 {collections?.favoriteCount ?? 0}</Button>
-              </Link>
+              <>
+                <Link href={`/login?next=/scripts/${detail.script.id}`}>
+                  <Button variant="outline">收藏 {collections?.favoriteCount ?? 0}</Button>
+                </Link>
+                <Link href={`/login?next=/scripts/${detail.script.id}`}>
+                  <Button variant="outline">点赞 {likeSummary?.likeCount ?? 0}</Button>
+                </Link>
+              </>
             )}
           </div>
         )}

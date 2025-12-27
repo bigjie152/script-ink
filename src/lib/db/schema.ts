@@ -130,3 +130,13 @@ export const scriptFavorites = sqliteTable("script_favorites", {
   scriptIndex: index("script_favorites_script_id_idx").on(table.scriptId),
   userIndex: index("script_favorites_user_id_idx").on(table.userId),
 }));
+
+export const scriptLikes = sqliteTable("script_likes", {
+  scriptId: text("script_id").notNull(),
+  userId: text("user_id").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.scriptId, table.userId] }),
+  scriptIndex: index("script_likes_script_id_idx").on(table.scriptId),
+  userIndex: index("script_likes_user_id_idx").on(table.userId),
+}));

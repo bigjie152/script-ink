@@ -20,6 +20,7 @@ wrangler d1 execute script-ink --file=./drizzle/0000_init.sql
 wrangler d1 execute script-ink --file=./drizzle/0001_comments.sql
 wrangler d1 execute script-ink --file=./drizzle/0002_collections.sql
 wrangler d1 execute script-ink --file=./drizzle/0003_favorites_folder.sql
+wrangler d1 execute script-ink --file=./drizzle/0004_script_likes.sql
 ```
 
 ## 本地开发
