@@ -72,6 +72,7 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
     const map = new Map<string, CommentItem[]>();
     for (const item of items) {
       if (!item.parentId) continue;
+      if (item.isDeleted) continue;
       const list = map.get(item.parentId) ?? [];
       list.push(item);
       map.set(item.parentId, list);
@@ -82,10 +83,12 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
     return map;
   }, [items]);
 
-  const topLevel = useMemo(
-    () => items.filter((item) => !item.parentId).sort((a, b) => a.createdAt - b.createdAt),
-    [items]
-  );
+  const topLevel = useMemo(() => {
+    const list = items
+      .filter((item) => !item.parentId)
+      .sort((a, b) => a.createdAt - b.createdAt);
+    return list.filter((item) => !item.isDeleted || (replyMap.get(item.id)?.length ?? 0) > 0);
+  }, [items, replyMap]);
 
   const toggleExpanded = (id: string) => {
     setExpanded((prev) => {
@@ -207,7 +210,10 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
       <div className="flex items-center justify-between">
         <h2 className="font-display text-xl text-ink-900">评论区</h2>
         {!viewer && (
-          <Link href={`/login?next=/scripts/${scriptId}`} className="text-sm text-ink-600 hover:text-ink-900">
+          <Link
+            href={`/login?next=/scripts/${scriptId}`}
+            className="text-sm text-ink-600 hover:text-ink-900"
+          >
             登录后参与评论
           </Link>
         )}
@@ -246,96 +252,109 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
             const replies = replyMap.get(comment.id) ?? [];
             const isExpanded = expanded.has(comment.id);
             const canEdit = viewer?.id === comment.authorId && !comment.isDeleted;
+            const canReply = Boolean(viewer) && !comment.isDeleted;
+            const canLike = Boolean(viewer) && !comment.isDeleted;
+            const showPlaceholder = comment.isDeleted;
+
             return (
               <Card key={comment.id} className="grid gap-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="text-xs text-ink-500">
-                    <span className="font-semibold text-ink-700">{comment.authorName}</span> · {formatDateTime(comment.createdAt)}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-ink-500">
-                    <button
-                      type="button"
-                      onClick={() => handleLike(comment.id)}
-                      className={`rounded-full px-3 py-1 ${comment.liked ? "bg-ink-900 text-paper-50" : "border border-ink-200 text-ink-600 hover:border-ink-500"}`}
-                    >
-                      赞 {comment.likeCount}
-                    </button>
-                    {!comment.isDeleted && (
+                  {showPlaceholder ? (
+                    <div className="text-xs text-ink-400">该评论已删除</div>
+                  ) : (
+                    <div className="text-xs text-ink-500">
+                      <span className="font-semibold text-ink-700">{comment.authorName}</span> · {formatDateTime(comment.createdAt)}
+                    </div>
+                  )}
+                  {!showPlaceholder && (
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-ink-500">
                       <button
                         type="button"
-                        onClick={() => setReplyingTo(comment.id)}
-                        className="rounded-full border border-ink-200 px-3 py-1 text-ink-600 hover:border-ink-500"
+                        onClick={() => handleLike(comment.id)}
+                        className={`rounded-full px-3 py-1 ${comment.liked ? "bg-ink-900 text-paper-50" : "border border-ink-200 text-ink-600 hover:border-ink-500"}`}
+                        disabled={!canLike}
                       >
-                        回复
+                        赞 {comment.likeCount}
                       </button>
-                    )}
-                    {canEdit && (
-                      <>
+                      {canReply && (
                         <button
                           type="button"
-                          onClick={() => startEdit(comment)}
+                          onClick={() => setReplyingTo(comment.id)}
                           className="rounded-full border border-ink-200 px-3 py-1 text-ink-600 hover:border-ink-500"
                         >
-                          编辑
+                          回复
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(comment.id)}
-                          className="rounded-full border border-ink-200 px-3 py-1 text-ink-600 hover:border-ink-500"
-                        >
-                          删除
-                        </button>
-                      </>
-                    )}
-                  </div>
+                      )}
+                      {canEdit && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => startEdit(comment)}
+                            className="rounded-full border border-ink-200 px-3 py-1 text-ink-600 hover:border-ink-500"
+                          >
+                            编辑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(comment.id)}
+                            className="rounded-full border border-ink-200 px-3 py-1 text-ink-600 hover:border-ink-500"
+                          >
+                            删除
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {editingId === comment.id ? (
-                  <div className="grid gap-2">
-                    <Textarea
-                      rows={3}
-                      value={editingContent}
-                      onChange={(event) => setEditingContent(event.target.value)}
-                    />
-                    <div className="flex items-center gap-2">
-                      <Button type="button" onClick={() => handleEdit(comment.id)}>
-                        保存
-                      </Button>
-                      <Button type="button" variant="outline" onClick={cancelEdit}>
-                        取消
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className={`text-sm ${comment.isDeleted ? "text-ink-400" : "text-ink-700"}`}>
-                    {comment.isDeleted ? "评论已删除" : comment.content}
-                  </p>
-                )}
+                {!showPlaceholder && (
+                  <>
+                    {editingId === comment.id ? (
+                      <div className="grid gap-2">
+                        <Textarea
+                          rows={3}
+                          value={editingContent}
+                          onChange={(event) => setEditingContent(event.target.value)}
+                        />
+                        <div className="flex items-center gap-2">
+                          <Button type="button" onClick={() => handleEdit(comment.id)}>
+                            保存
+                          </Button>
+                          <Button type="button" variant="outline" onClick={cancelEdit}>
+                            取消
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-ink-700">{comment.content}</p>
+                    )}
 
-                {replyingTo === comment.id && (
-                  <div className="grid gap-2 rounded-2xl border border-ink-100 bg-paper-50/80 p-4">
-                    <Textarea
-                      rows={3}
-                      value={replyContent}
-                      onChange={(event) => setReplyContent(event.target.value)}
-                      placeholder="写下你的回复..."
-                    />
-                    <div className="flex items-center gap-2">
-                      <Button type="button" onClick={() => handleCreate(comment.id)}>
-                        发布回复
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setReplyingTo(null);
-                          setReplyContent("");
-                        }}
-                      >
-                        取消
-                      </Button>
-                    </div>
-                  </div>
+                    {replyingTo === comment.id && (
+                      <div className="grid gap-2 rounded-2xl border border-ink-100 bg-paper-50/80 p-4">
+                        <Textarea
+                          rows={3}
+                          value={replyContent}
+                          onChange={(event) => setReplyContent(event.target.value)}
+                          placeholder="写下你的回复..."
+                        />
+                        <div className="flex items-center gap-2">
+                          <Button type="button" onClick={() => handleCreate(comment.id)}>
+                            发布回复
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setReplyingTo(null);
+                              setReplyContent("");
+                            }}
+                          >
+                            取消
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {replies.length > 0 && (
@@ -351,8 +370,12 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                       <div className="grid gap-3 border-l border-ink-200 pl-4">
                         {replies.map((reply) => {
                           const canEditReply = viewer?.id === reply.authorId && !reply.isDeleted;
+                          const canLikeReply = Boolean(viewer) && !reply.isDeleted;
                           return (
-                            <div key={reply.id} className="grid gap-2 rounded-2xl border border-ink-100 bg-paper-50/70 p-4">
+                            <div
+                              key={reply.id}
+                              className="grid gap-2 rounded-2xl border border-ink-100 bg-paper-50/70 p-4"
+                            >
                               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-500">
                                 <span>
                                   <span className="font-semibold text-ink-700">{reply.authorName}</span> · {formatDateTime(reply.createdAt)}
@@ -362,6 +385,7 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                                     type="button"
                                     onClick={() => handleLike(reply.id)}
                                     className={`rounded-full px-3 py-1 ${reply.liked ? "bg-ink-900 text-paper-50" : "border border-ink-200 text-ink-600 hover:border-ink-500"}`}
+                                    disabled={!canLikeReply}
                                   >
                                     赞 {reply.likeCount}
                                   </button>
@@ -402,9 +426,7 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                                   </div>
                                 </div>
                               ) : (
-                                <p className={`text-sm ${reply.isDeleted ? "text-ink-400" : "text-ink-700"}`}>
-                                  {reply.isDeleted ? "评论已删除" : reply.content}
-                                </p>
+                                <p className="text-sm text-ink-700">{reply.content}</p>
                               )}
                             </div>
                           );
