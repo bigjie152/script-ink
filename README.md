@@ -16,6 +16,7 @@
 ```bash
 wrangler d1 create script-ink
 wrangler d1 execute script-ink --file=./drizzle/0000_init.sql
+wrangler d1 execute script-ink --file=./drizzle/0001_comments.sql
 ```
 
 ## 本地开发

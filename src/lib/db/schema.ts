@@ -94,3 +94,28 @@ export const ratings = sqliteTable("ratings", {
   scriptIndex: index("ratings_script_id_idx").on(table.scriptId),
   uniqueUserScript: uniqueIndex("ratings_user_script_unique").on(table.userId, table.scriptId),
 }));
+
+export const comments = sqliteTable("comments", {
+  id: text("id").primaryKey(),
+  scriptId: text("script_id").notNull(),
+  authorId: text("author_id").notNull(),
+  parentId: text("parent_id"),
+  content: text("content").notNull(),
+  isDeleted: integer("is_deleted").notNull(),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => ({
+  scriptIndex: index("comments_script_id_idx").on(table.scriptId),
+  authorIndex: index("comments_author_id_idx").on(table.authorId),
+  parentIndex: index("comments_parent_id_idx").on(table.parentId),
+}));
+
+export const commentLikes = sqliteTable("comment_likes", {
+  commentId: text("comment_id").notNull(),
+  userId: text("user_id").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.commentId, table.userId] }),
+  commentIndex: index("comment_likes_comment_id_idx").on(table.commentId),
+  userIndex: index("comment_likes_user_id_idx").on(table.userId),
+}));

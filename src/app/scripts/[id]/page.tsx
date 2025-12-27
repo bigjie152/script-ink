@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { ForkButton } from "@/components/scripts/ForkButton";
 import { MarkdownBlock } from "@/components/scripts/MarkdownBlock";
 import { RatingForm } from "@/components/scripts/RatingForm";
+import { CommentsSection } from "@/components/scripts/CommentsSection";
 import { getCurrentUser } from "@/lib/auth";
 import { getScriptDetail, getScriptForkChain } from "@/lib/data";
 import { linkifyMentions } from "@/lib/markdown";
@@ -167,6 +168,17 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
       ) : (
         <Card>
           <p className="text-sm text-ink-600">私有剧本不参与社区评分。</p>
+        </Card>
+      )}
+
+      {detail.script.isPublic === 1 ? (
+        <CommentsSection
+          scriptId={detail.script.id}
+          viewer={user ? { id: user.id, displayName: user.displayName } : null}
+        />
+      ) : (
+        <Card>
+          <p className="text-sm text-ink-600">私有剧本暂不开放评论。</p>
         </Card>
       )}
     </div>
