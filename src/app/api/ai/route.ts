@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getScriptDetail } from "@/lib/data";
 import {
   buildMockResult,
+  buildResultFromText,
   getSectorRules,
   type AiAction,
   type AiMode,
@@ -10,6 +11,7 @@ import {
   type RoleDraft,
   type ClueDraft,
 } from "@/services/ai_agent_service";
+import { getAiConfig, requestDeepSeek } from "@/services/ai_client";
 import { getSystemPrompt } from "@/services/ai_prompt_templates";
 import { getTruthLock } from "@/services/truth_lock_controller";
 
@@ -83,13 +85,70 @@ export async function POST(request: Request) {
     tags: detail.tags,
   };
 
-  const result = buildMockResult({
-    scope,
-    action,
-    mode,
-    context: contextPool,
-    current: body?.current,
-  });
+  const systemPrompt = getSystemPrompt({ scope, action });
+  const contextMessage = `【GLOBAL_CANONICAL_STATE】
+${JSON.stringify({
+  truth_lock: contextPool.truthLock || undefined,
+  entities: {
+    roles: contextPool.roles.map((role) => role.name),
+    clues: contextPool.clues.map((clue) => clue.title),
+    tags: contextPool.tags,
+  },
+}, null, 2)}
+
+【当前板块已有内容】
+${body?.current
+  ? JSON.stringify(body.current, null, 2)
+  : JSON.stringify({ scope, dmBackground, dmFlow, truth }, null, 2)}
+
+【用户希望输出到哪里】
+- 板块：${scope}
+- 操作：${action}
+`;
+
+  const aiConfig = getAiConfig();
+  let result;
+  let aiText = "";
+  let aiSource = "mock";
+  let aiError = "";
+  if (aiConfig) {
+    try {
+      aiText = await requestDeepSeek(aiConfig, [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: contextMessage },
+        { role: "user", content: instruction || "（无额外指令）" },
+      ]);
+      if (!aiText.trim()) {
+        result = buildMockResult({
+          scope,
+          action,
+          mode,
+          context: contextPool,
+          current: body?.current,
+        });
+      } else {
+        result = buildResultFromText({ scope, action, text: aiText });
+        aiSource = "deepseek";
+      }
+    } catch (error) {
+      aiError = error instanceof Error ? error.message : "DeepSeek 调用失败";
+      result = buildMockResult({
+        scope,
+        action,
+        mode,
+        context: contextPool,
+        current: body?.current,
+      });
+    }
+  } else {
+    result = buildMockResult({
+      scope,
+      action,
+      mode,
+      context: contextPool,
+      current: body?.current,
+    });
+  }
 
   return NextResponse.json({
     ok: true,
@@ -99,6 +158,9 @@ export async function POST(request: Request) {
       Sector_Specific_Rules: getSectorRules(scope),
       User_Instruction: instruction,
     },
-    systemPrompt: getSystemPrompt({ scope, action }),
+    systemPrompt,
+    aiText,
+    aiSource,
+    aiError,
   });
 }

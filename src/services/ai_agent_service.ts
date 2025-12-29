@@ -213,6 +213,175 @@ const buildAuditWarnings = (
   return warnings;
 };
 
+const extractJsonPayload = (value: string) => {
+  const start = value.indexOf("[");
+  const end = value.lastIndexOf("]");
+  if (start === -1 || end === -1 || end <= start) return value;
+  return value.slice(start, end + 1);
+};
+
+const parseRolesFromText = (value: string): RoleDraft[] => {
+  const blocks = value.split(/\n(?=#+\s)/).map((block) => block.trim()).filter(Boolean);
+  if (blocks.length === 0) {
+    return [{ name: "AI 角色", contentMd: value.trim(), taskMd: "" }];
+  }
+  return blocks.map((block) => {
+    const lines = block.split(/\r?\n/);
+    const heading = lines[0].replace(/^#+\s*/, "").trim() || "未命名角色";
+    const rest = lines.slice(1).join("\n").trim();
+    const taskIndex = rest.search(/(角色任务|任务)/);
+    if (taskIndex >= 0) {
+      return {
+        name: heading,
+        contentMd: rest.slice(0, taskIndex).trim(),
+        taskMd: rest.slice(taskIndex).trim(),
+      };
+    }
+    return {
+      name: heading,
+      contentMd: rest,
+      taskMd: "",
+    };
+  });
+};
+
+const parseCluesFromText = (value: string): ClueDraft[] => {
+  const segments = value.split(/线索名称[:：]/).map((segment) => segment.trim()).filter(Boolean);
+  if (segments.length === 0) {
+    return [{ title: "AI 线索", contentMd: value.trim(), triggerMd: "" }];
+  }
+  return segments.map((segment, index) => {
+    const lines = segment.split(/\r?\n/).filter(Boolean);
+    const titleLine = lines[0]?.replace(/^[-*\s]*/, "") ?? "";
+    const triggerLine = lines.find((line) => line.includes("触发")) ?? "";
+    return {
+      title: titleLine || `线索 ${index + 1}`,
+      triggerMd: triggerLine,
+      contentMd: lines.join("\n").trim(),
+    };
+  });
+};
+
+const splitDmContent = (value: string) => {
+  const lines = value.split(/\r?\n/);
+  const backgroundLines: string[] = [];
+  const flowLines: string[] = [];
+  let mode: "background" | "flow" | "unknown" = "unknown";
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (/^(#+|\[|【).*(背景|世界观)/.test(trimmed)) {
+      mode = "background";
+    }
+    if (/^(#+|\[|【).*(流程|轮次|总览)/.test(trimmed)) {
+      mode = "flow";
+    }
+
+    if (mode === "background") {
+      backgroundLines.push(line);
+    } else if (mode === "flow") {
+      flowLines.push(line);
+    } else {
+      backgroundLines.push(line);
+    }
+  });
+
+  return {
+    background: backgroundLines.join("\n").trim(),
+    flow: flowLines.join("\n").trim(),
+  };
+};
+
+const extractWarnings = (value: string) => {
+  const lines = value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const candidates = lines.filter((line) => line.startsWith("-") || line.startsWith("•") || line.startsWith("⚠") || line.startsWith("❌"));
+  return (candidates.length > 0 ? candidates : lines).slice(0, 8).map((line) => line.replace(/^[-•\s]*/, ""));
+};
+
+export const buildResultFromText = ({
+  scope,
+  action,
+  text,
+}: {
+  scope: AiScope;
+  action: AiAction;
+  text: string;
+}): AiResult => {
+  const cleaned = text.trim();
+
+  if (action === "director") {
+    try {
+      const payload = extractJsonPayload(cleaned);
+      const ideas = JSON.parse(payload) as DirectorIdea[];
+      return {
+        summary: "导演模式生成完成。",
+        warnings: [],
+        changes: [],
+        ideas,
+      };
+    } catch {
+      return {
+        summary: "导演模式返回了不可解析的内容。",
+        warnings: ["请确认模型输出为 JSON 数组格式。"],
+        changes: [],
+      };
+    }
+  }
+
+  if (action === "audit") {
+    return {
+      summary: "AI 质检已完成。",
+      warnings: extractWarnings(cleaned),
+      changes: [],
+    };
+  }
+
+  if (scope === "truth") {
+    return {
+      summary: "AI 已生成真相内容。",
+      warnings: [],
+      changes: [{ target: "truth", action: "replace", value: cleaned }],
+    };
+  }
+
+  if (scope === "dm") {
+    const split = splitDmContent(cleaned);
+    return {
+      summary: "AI 已生成 DM 内容。",
+      warnings: [],
+      changes: [
+        { target: "dmBackground", action: "replace", value: split.background || cleaned },
+        { target: "dmFlow", action: "replace", value: split.flow || cleaned },
+      ],
+    };
+  }
+
+  if (scope === "roles") {
+    return {
+      summary: "AI 已生成角色内容。",
+      warnings: [],
+      changes: [{ target: "roles", action: "replace", value: parseRolesFromText(cleaned) }],
+    };
+  }
+
+  if (scope === "clues") {
+    return {
+      summary: "AI 已生成线索内容。",
+      warnings: [],
+      changes: [{ target: "clues", action: "replace", value: parseCluesFromText(cleaned) }],
+    };
+  }
+
+  return {
+    summary: "AI 已返回内容。",
+    warnings: [],
+    changes: [],
+  };
+};
+
 export const buildMockResult = ({
   scope,
   action,
