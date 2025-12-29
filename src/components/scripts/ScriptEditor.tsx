@@ -243,6 +243,15 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
       : `${current.trim()}\n\n${String(change.value ?? "")}`;
   };
 
+  const getPatchLabel = (item: unknown, target: AiChange["target"]) => {
+    if (item && typeof item === "object") {
+      const candidate = item as { name?: string; title?: string };
+      if (target === "roles" && candidate.name) return candidate.name;
+      if (target === "clues" && candidate.title) return candidate.title;
+    }
+    return target === "roles" ? "未命名角色" : "未命名线索";
+  };
+
   const toggleSelected = (index: number) => {
     setAiSelected((prev) =>
       prev.includes(index) ? prev.filter((item) => item !== index) : [...prev, index]
@@ -761,9 +770,9 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
                               </p>
                               {listItems.length > 0 ? (
                                 <ul className="mt-2 grid gap-1 text-xs text-ink-600">
-                                  {listItems.slice(0, 5).map((item: any, itemIndex: number) => (
+                                  {listItems.slice(0, 5).map((item, itemIndex: number) => (
                                     <li key={`${change.target}-${index}-${itemIndex}`}>
-                                      {change.target === "roles" ? (item?.name ?? "未命名角色") : (item?.title ?? "未命名线索")}
+                                      {getPatchLabel(item, change.target)}
                                     </li>
                                   ))}
                                 </ul>

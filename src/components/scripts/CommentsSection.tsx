@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -50,7 +50,7 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
   const [editingContent, setEditingContent] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     setLoading(true);
     setMessage(null);
     const response = await fetch(`/api/scripts/${scriptId}/comments`);
@@ -62,11 +62,11 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
     const data = (await response.json()) as { comments?: CommentItem[] };
     setItems(data.comments ?? []);
     setLoading(false);
-  };
+  }, [scriptId]);
 
   useEffect(() => {
     void loadComments();
-  }, [scriptId]);
+  }, [loadComments]);
 
   const replyMap = useMemo(() => {
     const map = new Map<string, CommentItem[]>();
