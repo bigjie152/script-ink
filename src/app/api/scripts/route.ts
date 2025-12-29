@@ -46,13 +46,19 @@ export async function POST(request: Request) {
     {
       id: crypto.randomUUID(),
       scriptId,
-      sectionType: "outline",
+      sectionType: "dm_background",
       contentMd: "",
     },
     {
       id: crypto.randomUUID(),
       scriptId,
-      sectionType: "dm",
+      sectionType: "dm_flow",
+      contentMd: "",
+    },
+    {
+      id: crypto.randomUUID(),
+      scriptId,
+      sectionType: "truth",
       contentMd: "",
     },
   ]);

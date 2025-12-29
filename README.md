@@ -25,6 +25,7 @@ wrangler d1 execute script-ink --file=./drizzle/0004_script_likes.sql
 wrangler d1 execute script-ink --file=./drizzle/0005_script_versions.sql
 wrangler d1 execute script-ink --file=./drizzle/0006_script_issues.sql
 wrangler d1 execute script-ink --file=./drizzle/0007_script_merge_requests.sql
+wrangler d1 execute script-ink --file=./drizzle/0008_roles_clues_fields.sql
 ```
 
 ## 本地开发

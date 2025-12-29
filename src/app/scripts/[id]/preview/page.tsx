@@ -32,10 +32,16 @@ export default async function PreviewScriptPage({ params }: PreviewPageProps) {
     redirect(`/scripts/${id}`);
   }
 
-  const outline = detail.sections.find((section) => section.sectionType === "outline")?.contentMd ?? "";
-  const dm = detail.sections.find((section) => section.sectionType === "dm")?.contentMd ?? "";
-  const outlineContent = linkifyMentions(outline, detail.roles, detail.clues);
-  const dmContent = linkifyMentions(dm, detail.roles, detail.clues);
+  const dmBackground = detail.sections.find((section) => section.sectionType === "dm_background")?.contentMd ?? "";
+  const dmFlow = detail.sections.find((section) => section.sectionType === "dm_flow")?.contentMd
+    ?? detail.sections.find((section) => section.sectionType === "dm")?.contentMd
+    ?? "";
+  const truth = detail.sections.find((section) => section.sectionType === "truth")?.contentMd
+    ?? detail.sections.find((section) => section.sectionType === "outline")?.contentMd
+    ?? "";
+  const dmBackgroundContent = linkifyMentions(dmBackground, detail.roles, detail.clues);
+  const dmFlowContent = linkifyMentions(dmFlow, detail.roles, detail.clues);
+  const truthContent = linkifyMentions(truth, detail.roles, detail.clues);
 
   return (
     <div className="grid gap-8">
@@ -74,14 +80,23 @@ export default async function PreviewScriptPage({ params }: PreviewPageProps) {
         </div>
       </section>
 
-      <section className="grid gap-6">
+      <section className="grid gap-6 md:grid-cols-2">
         <Card>
-          <h3 className="font-display text-xl text-ink-900">故事大纲</h3>
-          <MarkdownBlock content={outlineContent || "暂无内容"} />
+          <h3 className="font-display text-xl text-ink-900">DM 手册 / 游戏流程</h3>
+          <div className="mt-4 grid gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-500">背景简介</p>
+              <MarkdownBlock content={dmBackgroundContent || "暂无内容"} />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-500">游戏流程</p>
+              <MarkdownBlock content={dmFlowContent || "暂无内容"} />
+            </div>
+          </div>
         </Card>
         <Card>
-          <h3 className="font-display text-xl text-ink-900">DM 手册</h3>
-          <MarkdownBlock content={dmContent || "暂无内容"} />
+          <h3 className="font-display text-xl text-ink-900">真相</h3>
+          <MarkdownBlock content={truthContent || "暂无内容"} />
         </Card>
       </section>
 
@@ -95,7 +110,16 @@ export default async function PreviewScriptPage({ params }: PreviewPageProps) {
               detail.roles.map((role) => (
                 <div key={role.id} id={`role-${role.id}`} className="rounded-2xl border border-ink-100 bg-paper-50/80 p-4">
                   <h4 className="font-display text-lg text-ink-900">{role.name || "未命名角色"}</h4>
-                  <MarkdownBlock content={linkifyMentions(role.contentMd, detail.roles, detail.clues)} />
+                  <div className="mt-3 grid gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-ink-500">角色剧情</p>
+                      <MarkdownBlock content={linkifyMentions(role.contentMd, detail.roles, detail.clues)} />
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-ink-500">角色任务</p>
+                      <MarkdownBlock content={linkifyMentions(role.taskMd ?? "", detail.roles, detail.clues) || "暂无内容"} />
+                    </div>
+                  </div>
                 </div>
               ))
             )}
@@ -110,7 +134,16 @@ export default async function PreviewScriptPage({ params }: PreviewPageProps) {
               detail.clues.map((clue) => (
                 <div key={clue.id} id={`clue-${clue.id}`} className="rounded-2xl border border-ink-100 bg-paper-50/80 p-4">
                   <h4 className="font-display text-lg text-ink-900">{clue.title || "未命名线索"}</h4>
-                  <MarkdownBlock content={linkifyMentions(clue.contentMd, detail.roles, detail.clues)} />
+                  <div className="mt-3 grid gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-ink-500">触发环节 / 条件</p>
+                      <MarkdownBlock content={linkifyMentions(clue.triggerMd ?? "", detail.roles, detail.clues) || "暂无内容"} />
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-ink-500">线索内容</p>
+                      <MarkdownBlock content={linkifyMentions(clue.contentMd, detail.roles, detail.clues)} />
+                    </div>
+                  </div>
                 </div>
               ))
             )}

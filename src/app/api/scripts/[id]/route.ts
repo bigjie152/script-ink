@@ -62,11 +62,13 @@ export async function PUT(request: Request, { params }: RouteContext) {
     id?: string;
     name?: string;
     contentMd?: string;
+    taskMd?: string;
   };
   type ClueInput = {
     id?: string;
     title?: string;
     contentMd?: string;
+    triggerMd?: string;
   };
 
   const rolesInput = Array.isArray(body?.roles)
@@ -97,37 +99,59 @@ export async function PUT(request: Request, { params }: RouteContext) {
     .where(eq(scripts.id, id));
 
   const existingSections = detail.sections;
-  const outlineSection = existingSections.find((section) => section.sectionType === "outline");
-  const dmSection = existingSections.find((section) => section.sectionType === "dm");
+  const dmBackgroundContent = String(sections.dmBackground ?? "");
+  const dmFlowContent = String(sections.dmFlow ?? "");
+  const truthContent = String(sections.truth ?? "");
 
-  const outlineContent = String(sections.outline ?? "");
-  const dmContent = String(sections.dm ?? "");
+  const dmBackgroundSection = existingSections.find(
+    (section) => section.sectionType === "dm_background"
+  );
+  const dmFlowSection = existingSections.find(
+    (section) => section.sectionType === "dm_flow"
+  );
+  const truthSection = existingSections.find(
+    (section) => section.sectionType === "truth"
+  );
 
-  if (outlineSection) {
+  if (dmBackgroundSection) {
     await db
       .update(scriptSections)
-      .set({ contentMd: outlineContent })
-      .where(eq(scriptSections.id, outlineSection.id));
+      .set({ contentMd: dmBackgroundContent })
+      .where(eq(scriptSections.id, dmBackgroundSection.id));
   } else {
     await db.insert(scriptSections).values({
       id: crypto.randomUUID(),
       scriptId: id,
-      sectionType: "outline",
-      contentMd: outlineContent,
+      sectionType: "dm_background",
+      contentMd: dmBackgroundContent,
     });
   }
 
-  if (dmSection) {
+  if (dmFlowSection) {
     await db
       .update(scriptSections)
-      .set({ contentMd: dmContent })
-      .where(eq(scriptSections.id, dmSection.id));
+      .set({ contentMd: dmFlowContent })
+      .where(eq(scriptSections.id, dmFlowSection.id));
   } else {
     await db.insert(scriptSections).values({
       id: crypto.randomUUID(),
       scriptId: id,
-      sectionType: "dm",
-      contentMd: dmContent,
+      sectionType: "dm_flow",
+      contentMd: dmFlowContent,
+    });
+  }
+
+  if (truthSection) {
+    await db
+      .update(scriptSections)
+      .set({ contentMd: truthContent })
+      .where(eq(scriptSections.id, truthSection.id));
+  } else {
+    await db.insert(scriptSections).values({
+      id: crypto.randomUUID(),
+      scriptId: id,
+      sectionType: "truth",
+      contentMd: truthContent,
     });
   }
 
@@ -138,8 +162,9 @@ export async function PUT(request: Request, { params }: RouteContext) {
       scriptId: id,
       name: String(role.name ?? "").trim(),
       contentMd: String(role.contentMd ?? ""),
+      taskMd: String(role.taskMd ?? ""),
     }))
-    .filter((role) => role.name || role.contentMd);
+    .filter((role) => role.name || role.contentMd || role.taskMd);
 
   if (roleRows.length > 0) {
     await db.insert(roles).values(roleRows);
@@ -152,8 +177,9 @@ export async function PUT(request: Request, { params }: RouteContext) {
       scriptId: id,
       title: String(clue.title ?? "").trim(),
       contentMd: String(clue.contentMd ?? ""),
+      triggerMd: String(clue.triggerMd ?? ""),
     }))
-    .filter((clue) => clue.title || clue.contentMd);
+    .filter((clue) => clue.title || clue.contentMd || clue.triggerMd);
 
   if (clueRows.length > 0) {
     await db.insert(clues).values(clueRows);

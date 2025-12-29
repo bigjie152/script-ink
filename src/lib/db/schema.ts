@@ -51,6 +51,7 @@ export const roles = sqliteTable("roles", {
   scriptId: text("script_id").notNull(),
   name: text("name").notNull(),
   contentMd: text("content_md").notNull(),
+  taskMd: text("task_md").notNull().default(""),
 }, (table) => ({
   scriptIndex: index("roles_script_id_idx").on(table.scriptId),
 }));
@@ -60,6 +61,7 @@ export const clues = sqliteTable("clues", {
   scriptId: text("script_id").notNull(),
   title: text("title").notNull(),
   contentMd: text("content_md").notNull(),
+  triggerMd: text("trigger_md").notNull().default(""),
 }, (table) => ({
   scriptIndex: index("clues_script_id_idx").on(table.scriptId),
 }));

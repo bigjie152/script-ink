@@ -7,10 +7,10 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Badge } from "@/components/ui/Badge";
 
 const tabs = [
-  { id: "outline", label: "故事大纲" },
-  { id: "roles", label: "人物剧本" },
+  { id: "dm", label: "DM 手册 / 游戏流程" },
+  { id: "roles", label: "角色剧本" },
   { id: "clues", label: "线索库" },
-  { id: "dm", label: "DM 手册" },
+  { id: "truth", label: "真相" },
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
@@ -24,24 +24,38 @@ type ScriptEditorProps = {
     allowFork: number;
   };
   sections: { id: string; sectionType: string; contentMd: string }[];
-  roles: { id: string; name: string; contentMd: string }[];
-  clues: { id: string; title: string; contentMd: string }[];
+  roles: { id: string; name: string; contentMd: string; taskMd?: string | null }[];
+  clues: { id: string; title: string; contentMd: string; triggerMd?: string | null }[];
   tags: string[];
 };
 
 export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEditorProps) => {
-  const [activeTab, setActiveTab] = useState<TabId>("outline");
-  const outlineSection = sections.find((section) => section.sectionType === "outline");
-  const dmSection = sections.find((section) => section.sectionType === "dm");
+  const [activeTab, setActiveTab] = useState<TabId>("dm");
+  const dmBackgroundSection = sections.find((section) => section.sectionType === "dm_background");
+  const dmFlowSection = sections.find((section) => section.sectionType === "dm_flow");
+  const legacyDmSection = sections.find((section) => section.sectionType === "dm");
+  const truthSection = sections.find((section) => section.sectionType === "truth")
+    ?? sections.find((section) => section.sectionType === "outline");
   const [title, setTitle] = useState(script.title);
   const [summary, setSummary] = useState(script.summary ?? "");
   const [versionNote, setVersionNote] = useState("");
   const [isPublic, setIsPublic] = useState(script.isPublic === 1);
   const [allowFork, setAllowFork] = useState(script.allowFork === 1);
-  const [outline, setOutline] = useState(outlineSection?.contentMd ?? "");
-  const [dm, setDm] = useState(dmSection?.contentMd ?? "");
-  const [roleItems, setRoleItems] = useState(roles);
-  const [clueItems, setClueItems] = useState(clues);
+  const [dmBackground, setDmBackground] = useState(dmBackgroundSection?.contentMd ?? "");
+  const [dmFlow, setDmFlow] = useState(dmFlowSection?.contentMd ?? legacyDmSection?.contentMd ?? "");
+  const [truth, setTruth] = useState(truthSection?.contentMd ?? "");
+  const [roleItems, setRoleItems] = useState(
+    roles.map((role) => ({
+      ...role,
+      taskMd: role.taskMd ?? "",
+    }))
+  );
+  const [clueItems, setClueItems] = useState(
+    clues.map((clue) => ({
+      ...clue,
+      triggerMd: clue.triggerMd ?? "",
+    }))
+  );
   const [tagInput, setTagInput] = useState(tags.map((tag) => `#${tag}`).join(" "));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -49,14 +63,14 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
   const addRole = () => {
     setRoleItems((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), name: "", contentMd: "" },
+      { id: crypto.randomUUID(), name: "", contentMd: "", taskMd: "" },
     ]);
   };
 
   const addClue = () => {
     setClueItems((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), title: "", contentMd: "" },
+      { id: crypto.randomUUID(), title: "", triggerMd: "", contentMd: "" },
     ]);
   };
 
@@ -99,8 +113,9 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
       tags: tagInput,
       versionNote: versionNote.trim(),
       sections: {
-        outline,
-        dm,
+        dmBackground,
+        dmFlow,
+        truth,
       },
       roles: roleItems,
       clues: clueItems,
@@ -202,38 +217,35 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
         ))}
       </div>
 
-      {activeTab === "outline" && (
-        <div className="rounded-3xl border border-ink-100 bg-white/80 p-6">
-          <p className="text-xs text-ink-500">支持 Markdown，建议描述故事主线与关键反转。</p>
-          <Textarea
-            rows={16}
-            value={outline}
-            onChange={(event) => setOutline(event.target.value)}
-            placeholder="从案发到真相，写下主要剧情线索。"
-          />
-        </div>
-      )}
-
       {activeTab === "dm" && (
         <div className="rounded-3xl border border-ink-100 bg-white/80 p-6">
-          <p className="text-xs text-ink-500">记录主持人需要掌握的流程、节奏和隐藏信息。</p>
-          <Textarea
-            rows={16}
-            value={dm}
-            onChange={(event) => setDm(event.target.value)}
-            placeholder="主持人提示、关键节奏、玩家引导等。"
-          />
+          <p className="text-xs text-ink-500">先交代背景，再写清游戏流程和关键节点。</p>
+          <div className="mt-4 grid gap-4">
+            <div>
+              <label className="text-xs font-semibold text-ink-600">背景简介</label>
+              <Textarea
+                rows={8}
+                value={dmBackground}
+                onChange={(event) => setDmBackground(event.target.value)}
+                placeholder="世界观与事件背景、时间线、重要人物关系等。"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-ink-600">游戏流程</label>
+              <Textarea
+                rows={10}
+                value={dmFlow}
+                onChange={(event) => setDmFlow(event.target.value)}
+                placeholder="开场、搜证、讨论、投票、复盘流程。"
+              />
+            </div>
+          </div>
         </div>
       )}
 
       {activeTab === "roles" && (
         <div className="grid gap-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display text-lg text-ink-900">角色剧本</h3>
-            <Button variant="outline" type="button" onClick={addRole}>
-              添加角色
-            </Button>
-          </div>
+          <h3 className="font-display text-lg text-ink-900">角色剧本</h3>
           {roleItems.length === 0 ? (
             <p className="text-sm text-ink-500">还没有角色，先添加一个吧。</p>
           ) : (
@@ -254,26 +266,42 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
                     删除
                   </button>
                 </div>
-                <Textarea
-                  rows={10}
-                  value={role.contentMd}
-                  onChange={(event) => updateRole(index, { contentMd: event.target.value })}
-                  placeholder="第一人称剧本内容"
-                />
+                <div className="mt-4 grid gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-ink-600">角色剧情</label>
+                    <Textarea
+                      rows={8}
+                      value={role.contentMd}
+                      onChange={(event) => updateRole(index, { contentMd: event.target.value })}
+                      placeholder="第一人称剧本内容"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-ink-600">角色任务</label>
+                    <Textarea
+                      rows={5}
+                      value={role.taskMd ?? ""}
+                      onChange={(event) => updateRole(index, { taskMd: event.target.value })}
+                      placeholder="角色要完成的目标与行动指引"
+                    />
+                  </div>
+                </div>
               </div>
             ))
           )}
+          <button
+            type="button"
+            onClick={addRole}
+            className="flex items-center justify-center rounded-3xl border border-dashed border-ink-200 bg-paper-50/80 py-4 text-sm font-semibold text-ink-700 hover:border-ink-400"
+          >
+            ＋ 新增角色
+          </button>
         </div>
       )}
 
       {activeTab === "clues" && (
         <div className="grid gap-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display text-lg text-ink-900">线索库</h3>
-            <Button variant="outline" type="button" onClick={addClue}>
-              添加线索
-            </Button>
-          </div>
+          <h3 className="font-display text-lg text-ink-900">线索库</h3>
           {clueItems.length === 0 ? (
             <p className="text-sm text-ink-500">还没有线索，先添加一条吧。</p>
           ) : (
@@ -294,15 +322,48 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
                     删除
                   </button>
                 </div>
-                <Textarea
-                  rows={8}
-                  value={clue.contentMd}
-                  onChange={(event) => updateClue(index, { contentMd: event.target.value })}
-                  placeholder="线索描述"
-                />
+                <div className="mt-4 grid gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-ink-600">触发环节 / 条件</label>
+                    <Textarea
+                      rows={4}
+                      value={clue.triggerMd ?? ""}
+                      onChange={(event) => updateClue(index, { triggerMd: event.target.value })}
+                      placeholder="例如：完成搜证环节后、角色对话触发"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-ink-600">线索内容</label>
+                    <Textarea
+                      rows={6}
+                      value={clue.contentMd}
+                      onChange={(event) => updateClue(index, { contentMd: event.target.value })}
+                      placeholder="线索描述"
+                    />
+                  </div>
+                </div>
               </div>
             ))
           )}
+          <button
+            type="button"
+            onClick={addClue}
+            className="flex items-center justify-center rounded-3xl border border-dashed border-ink-200 bg-paper-50/80 py-4 text-sm font-semibold text-ink-700 hover:border-ink-400"
+          >
+            ＋ 新增线索
+          </button>
+        </div>
+      )}
+
+      {activeTab === "truth" && (
+        <div className="rounded-3xl border border-ink-100 bg-white/80 p-6">
+          <p className="text-xs text-ink-500">在这里完整写下故事真相与动机。</p>
+          <Textarea
+            rows={14}
+            value={truth}
+            onChange={(event) => setTruth(event.target.value)}
+            placeholder="写明凶手动机、作案过程、关键误导点与最终揭示。"
+          />
         </div>
       )}
 
