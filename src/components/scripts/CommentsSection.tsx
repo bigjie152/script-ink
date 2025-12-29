@@ -208,31 +208,31 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
   };
 
   return (
-    <section className="grid gap-4">
+    <section className="grid gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-xl text-ink-900">评论区</h2>
+        <h2 className="font-display text-lg text-ink-900">评论区</h2>
         {!viewer && (
           <Link
             href={`/login?next=/scripts/${scriptId}`}
-            className="text-sm text-ink-600 hover:text-ink-900"
+            className="text-xs text-ink-600 hover:text-ink-900"
           >
             登录后参与评论
           </Link>
         )}
       </div>
 
-      <Card>
-        <p className="text-sm text-ink-600">发布你的看法，分享创作建议。</p>
-        <div className="mt-4 grid gap-3">
+      <Card className="p-4">
+        <p className="text-xs text-ink-600">发布你的看法，分享创作建议。</p>
+        <div className="mt-3 grid gap-2">
           <Textarea
-            rows={4}
+            rows={3}
             value={newContent}
             onChange={(event) => setNewContent(event.target.value)}
             placeholder={viewer ? "写下你的评论..." : "登录后即可发表评论"}
             disabled={!viewer}
           />
-          <div className="flex items-center gap-3">
-            <Button type="button" onClick={() => handleCreate()} disabled={!viewer}>
+          <div className="flex items-center gap-2">
+            <Button type="button" onClick={() => handleCreate()} disabled={!viewer} className="px-3 py-1.5 text-xs">
               发表评论
             </Button>
             {message && <span className="text-xs text-ink-600">{message}</span>}
@@ -241,12 +241,12 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
       </Card>
 
       {loading ? (
-        <Card>
-          <p className="text-sm text-ink-500">评论加载中...</p>
+        <Card className="p-4">
+          <p className="text-xs text-ink-500">评论加载中...</p>
         </Card>
       ) : topLevel.length === 0 ? (
-        <Card>
-          <p className="text-sm text-ink-500">还没有评论，来抢沙发吧。</p>
+        <Card className="p-4">
+          <p className="text-xs text-ink-500">还没有评论，来抢沙发吧。</p>
         </Card>
       ) : (
         <div className="grid gap-4">
@@ -259,8 +259,8 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
             const showPlaceholder = comment.isDeleted;
 
             return (
-              <Card key={comment.id} className="grid gap-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+              <Card key={comment.id} className="grid gap-2 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   {showPlaceholder ? (
                     <div className="text-xs text-ink-400">该评论已删除</div>
                   ) : (
@@ -274,7 +274,7 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                       <button
                         type="button"
                         onClick={() => handleLike(comment.id)}
-                        className={`rounded-full px-3 py-1 ${
+                        className={`rounded-full px-2.5 py-1 text-xs ${
                           comment.liked
                             ? "bg-ink-900 text-paper-50"
                             : "border border-ink-200 text-ink-600 hover:border-ink-500"
@@ -287,7 +287,7 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                         <button
                           type="button"
                           onClick={() => setReplyingTo(comment.id)}
-                          className="rounded-full border border-ink-200 px-3 py-1 text-ink-600 hover:border-ink-500"
+                          className="rounded-full border border-ink-200 px-2.5 py-1 text-xs text-ink-600 hover:border-ink-500"
                         >
                           回复
                         </button>
@@ -297,14 +297,14 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                           <button
                             type="button"
                             onClick={() => startEdit(comment)}
-                            className="rounded-full border border-ink-200 px-3 py-1 text-ink-600 hover:border-ink-500"
+                            className="rounded-full border border-ink-200 px-2.5 py-1 text-xs text-ink-600 hover:border-ink-500"
                           >
                             编辑
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDelete(comment.id)}
-                            className="rounded-full border border-ink-200 px-3 py-1 text-ink-600 hover:border-ink-500"
+                            className="rounded-full border border-ink-200 px-2.5 py-1 text-xs text-ink-600 hover:border-ink-500"
                           >
                             删除
                           </button>
@@ -324,10 +324,10 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                           onChange={(event) => setEditingContent(event.target.value)}
                         />
                         <div className="flex items-center gap-2">
-                          <Button type="button" onClick={() => handleEdit(comment.id)}>
+                          <Button type="button" onClick={() => handleEdit(comment.id)} className="px-3 py-1.5 text-xs">
                             保存
                           </Button>
-                          <Button type="button" variant="outline" onClick={cancelEdit}>
+                          <Button type="button" variant="outline" onClick={cancelEdit} className="px-3 py-1.5 text-xs">
                             取消
                           </Button>
                         </div>
@@ -337,7 +337,7 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                     )}
 
                     {replyingTo === comment.id && (
-                      <div className="grid gap-2 rounded-2xl border border-ink-100 bg-paper-50/80 p-4">
+                      <div className="grid gap-2 rounded-xl border border-ink-100 bg-paper-50/80 p-3">
                         <Textarea
                           rows={3}
                           value={replyContent}
@@ -345,12 +345,13 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                           placeholder="写下你的回复..."
                         />
                         <div className="flex items-center gap-2">
-                          <Button type="button" onClick={() => handleCreate(comment.id)}>
+                          <Button type="button" onClick={() => handleCreate(comment.id)} className="px-3 py-1.5 text-xs">
                             发布回复
                           </Button>
                           <Button
                             type="button"
                             variant="outline"
+                            className="px-3 py-1.5 text-xs"
                             onClick={() => {
                               setReplyingTo(null);
                               setReplyContent("");
@@ -381,7 +382,7 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                           return (
                             <div
                               key={reply.id}
-                              className="grid gap-2 rounded-2xl border border-ink-100 bg-paper-50/70 p-4"
+                              className="grid gap-2 rounded-xl border border-ink-100 bg-paper-50/70 p-3"
                             >
                               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-500">
                                 <span>
@@ -394,7 +395,7 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                                   <button
                                     type="button"
                                     onClick={() => handleLike(reply.id)}
-                                    className={`rounded-full px-3 py-1 ${
+                                    className={`rounded-full px-2.5 py-1 text-xs ${
                                       reply.liked
                                         ? "bg-ink-900 text-paper-50"
                                         : "border border-ink-200 text-ink-600 hover:border-ink-500"
@@ -408,14 +409,14 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                                       <button
                                         type="button"
                                         onClick={() => startEdit(reply)}
-                                        className="rounded-full border border-ink-200 px-3 py-1 text-ink-600 hover:border-ink-500"
+                                        className="rounded-full border border-ink-200 px-2.5 py-1 text-xs text-ink-600 hover:border-ink-500"
                                       >
                                         编辑
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => handleDelete(reply.id)}
-                                        className="rounded-full border border-ink-200 px-3 py-1 text-ink-600 hover:border-ink-500"
+                                        className="rounded-full border border-ink-200 px-2.5 py-1 text-xs text-ink-600 hover:border-ink-500"
                                       >
                                         删除
                                       </button>
@@ -434,7 +435,7 @@ export const CommentsSection = ({ scriptId, viewer }: CommentsSectionProps) => {
                                     <Button type="button" onClick={() => handleEdit(reply.id)}>
                                       保存
                                     </Button>
-                                    <Button type="button" variant="outline" onClick={cancelEdit}>
+                                    <Button type="button" variant="outline" onClick={cancelEdit} className="px-3 py-1.5 text-xs">
                                       取消
                                     </Button>
                                   </div>

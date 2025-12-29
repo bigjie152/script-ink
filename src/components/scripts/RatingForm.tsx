@@ -60,9 +60,9 @@ export const RatingForm = ({ scriptId }: RatingFormProps) => {
   };
 
   return (
-    <div className="rounded-3xl border border-ink-100 bg-white/80 p-6">
-      <h3 className="font-display text-lg text-ink-900">给出你的评分</h3>
-      <div className="mt-4 grid gap-4 md:grid-cols-3">
+    <div className="rounded-2xl border border-ink-100 bg-white/80 p-4">
+      <h3 className="font-display text-base text-ink-900">给出你的评分</h3>
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
         <label className="text-xs text-ink-600">
           逻辑分
           <Select
@@ -103,8 +103,8 @@ export const RatingForm = ({ scriptId }: RatingFormProps) => {
           </Select>
         </label>
       </div>
-      <div className="mt-4 flex items-center gap-3">
-        <Button type="button" onClick={handleSubmit} disabled={hasRated}>
+      <div className="mt-3 flex items-center gap-2">
+        <Button type="button" onClick={handleSubmit} disabled={hasRated} className="px-3 py-1.5 text-xs">
           {hasRated ? "已评分" : "提交评分"}
         </Button>
         {message && <span className="text-xs text-ink-600">{message}</span>}
