@@ -5,9 +5,6 @@ pages_build_output_dir = ".vercel/output/static"
 
 [vars]
 NODE_ENV = "development"
-AI_PROVIDER = "google"
-AI_MODEL = "gemini-3-flash-preview"
-AI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 
 [[d1_databases]]
 binding = "DB"

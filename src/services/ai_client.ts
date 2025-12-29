@@ -19,25 +19,18 @@ const readEnv = (key: string) => {
 };
 
 export const getAiConfig = (): AiConfig | null => {
-  const provider = (readEnv("AI_PROVIDER") ?? "google").trim().toLowerCase();
-
-  if (provider === "google" || provider === "gemini") {
-    const apiKey = readEnv("AI_API_KEY") ?? readEnv("GEMINI_API_KEY") ?? readEnv("GOOGLE_API_KEY") ?? "";
-    if (!apiKey) return null;
-    const baseUrl = readEnv("AI_BASE_URL") ?? "https://generativelanguage.googleapis.com/v1beta";
-    const model = readEnv("AI_MODEL") ?? "gemini-3-flash-preview";
-    return { provider: "google", apiKey, baseUrl, model };
-  }
-
-  if (provider === "deepseek") {
-    const apiKey = readEnv("AI_API_KEY") ?? readEnv("DEEPSEEK_API_KEY") ?? "";
-    if (!apiKey) return null;
-    const baseUrl = readEnv("AI_BASE_URL") ?? "https://api.deepseek.com/v1";
-    const model = readEnv("AI_MODEL") ?? "deepseek-reasoner";
-    return { provider: "deepseek", apiKey, baseUrl, model };
-  }
-
-  return null;
+  // DeepSeek code保留但禁用，仅使用 Google AI Studio。
+  const apiKey = readEnv("AI_API_KEY") ?? readEnv("GEMINI_API_KEY") ?? readEnv("GOOGLE_API_KEY") ?? "";
+  if (!apiKey) return null;
+  const baseUrlCandidate = readEnv("GEMINI_BASE_URL") ?? readEnv("AI_BASE_URL") ?? "";
+  const modelCandidate = readEnv("GEMINI_MODEL") ?? readEnv("AI_MODEL") ?? "";
+  const baseUrl = baseUrlCandidate.includes("googleapis.com")
+    ? baseUrlCandidate
+    : "https://generativelanguage.googleapis.com/v1beta";
+  const model = modelCandidate.startsWith("gemini")
+    ? modelCandidate
+    : "gemini-3-flash-preview";
+  return { provider: "google", apiKey, baseUrl, model };
 };
 
 export const requestDeepSeek = async (config: AiConfig, messages: AiMessage[]) => {
