@@ -7,6 +7,7 @@ import { ForkButton } from "@/components/scripts/ForkButton";
 import { ScriptCollectActions } from "@/components/scripts/ScriptCollectActions";
 import { ScriptLikeButton } from "@/components/scripts/ScriptLikeButton";
 import { MarkdownBlock } from "@/components/scripts/MarkdownBlock";
+import { ExpandableMarkdown } from "@/components/scripts/ExpandableMarkdown";
 import { RatingForm } from "@/components/scripts/RatingForm";
 import { CommentsSection } from "@/components/scripts/CommentsSection";
 import { getCurrentUser } from "@/lib/auth";
@@ -63,6 +64,8 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
     : null;
   const favoriteFolders = user ? await getFavoriteFolders(user.id) : [];
   const contributors = await getScriptContributors(detail.script.id);
+  const readOnlyBlock =
+    "rounded-2xl border border-ink-200/80 bg-paper-50 px-4 py-3 text-sm text-ink-900 shadow-[inset_0_1px_6px_rgba(24,36,38,0.08)] max-h-[420px] overflow-y-auto";
 
   return (
     <div className="grid gap-8">
@@ -231,11 +234,15 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
             <div className="mt-4 grid gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-ink-500">背景简介</p>
-                <MarkdownBlock content={dmBackgroundContent || "暂无内容"} />
+                <div className={readOnlyBlock}>
+                  <MarkdownBlock content={dmBackgroundContent || "暂无内容"} />
+                </div>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-ink-500">游戏流程</p>
-                <MarkdownBlock content={dmFlowContent || "暂无内容"} />
+                <div className={readOnlyBlock}>
+                  <MarkdownBlock content={dmFlowContent || "暂无内容"} />
+                </div>
               </div>
             </div>
           </details>
@@ -249,7 +256,9 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
               </span>
             </summary>
             <div className="mt-4">
-              <MarkdownBlock content={truthContent || "暂无内容"} />
+              <div className={readOnlyBlock}>
+                <MarkdownBlock content={truthContent || "暂无内容"} />
+              </div>
             </div>
           </details>
         </Card>
@@ -274,11 +283,13 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
                     <div className="mt-3 grid gap-3">
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-500">角色剧情</p>
-                        <MarkdownBlock content={linkifyMentions(role.contentMd, detail.roles, detail.clues)} />
+                        <ExpandableMarkdown content={linkifyMentions(role.contentMd, detail.roles, detail.clues)} />
                       </div>
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-500">角色任务</p>
-                        <MarkdownBlock content={linkifyMentions(role.taskMd ?? "", detail.roles, detail.clues) || "暂无内容"} />
+                        <ExpandableMarkdown
+                          content={linkifyMentions(role.taskMd ?? "", detail.roles, detail.clues) || "暂无内容"}
+                        />
                       </div>
                     </div>
                   </div>
@@ -305,11 +316,13 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
                     <div className="mt-3 grid gap-3">
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-500">触发环节 / 条件</p>
-                        <MarkdownBlock content={linkifyMentions(clue.triggerMd ?? "", detail.roles, detail.clues) || "暂无内容"} />
+                        <ExpandableMarkdown
+                          content={linkifyMentions(clue.triggerMd ?? "", detail.roles, detail.clues) || "暂无内容"}
+                        />
                       </div>
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-500">线索内容</p>
-                        <MarkdownBlock content={linkifyMentions(clue.contentMd, detail.roles, detail.clues)} />
+                        <ExpandableMarkdown content={linkifyMentions(clue.contentMd, detail.roles, detail.clues)} />
                       </div>
                     </div>
                   </div>
