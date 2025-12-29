@@ -1,5 +1,5 @@
 export type AiScope = "dm" | "roles" | "clues" | "truth" | "global";
-export type AiAction = "generate" | "improve" | "audit";
+export type AiAction = "generate" | "improve" | "audit" | "director";
 export type AiMode = "light" | "standard";
 
 export type RoleDraft = {
@@ -30,10 +30,23 @@ export type AiChange = {
   value: unknown;
 };
 
+export type DirectorIdea = {
+  id: string;
+  title: string;
+  logline: string;
+  truth: string;
+  dmBackground: string;
+  dmFlow: string;
+  roles: RoleDraft[];
+  clues: ClueDraft[];
+  tags: string[];
+};
+
 export type AiResult = {
   summary: string;
   warnings: string[];
   changes: AiChange[];
+  ideas?: DirectorIdea[];
 };
 
 export const getSectorRules = (scope: AiScope) => {
@@ -84,6 +97,48 @@ const findDuplicates = (items: string[]) => {
     }
   });
   return Array.from(duplicates);
+};
+
+const buildDirectorIdeas = (context: AiContextPool): DirectorIdea[] => {
+  const seeds = [
+    {
+      id: "seed-1",
+      title: "遗失的家族遗产",
+      logline: "一封遗嘱与一场失踪，将家族旧案重新推回众人面前。",
+      tags: ["家族", "遗产", "失踪"],
+    },
+    {
+      id: "seed-2",
+      title: "寒夜孤馆",
+      logline: "大雪封山的旅馆里，一夜之间的变故引发连环疑云。",
+      tags: ["密闭", "旅馆", "暴风雪"],
+    },
+    {
+      id: "seed-3",
+      title: "双重身份",
+      logline: "所有人都在隐藏真实身份，真相藏在彼此的秘密交叉点。",
+      tags: ["身份", "谎言", "反转"],
+    },
+  ];
+
+  return seeds.map((seed) => ({
+    id: seed.id,
+    title: seed.title,
+    logline: seed.logline,
+    truth: `【真相骨架】\n- 凶手：\n- 动机：\n- 手法：\n- 时间线：\n- 证据链：\n\n提示：请围绕「${seed.title}」完善闭环。`,
+    dmBackground: `【背景简介】\n- 场景：${seed.title}\n- 核心冲突：${seed.logline}`,
+    dmFlow: "【流程】开场 -> 搜证 -> 讨论 -> 投票 -> 复盘",
+    roles: [
+      { name: "角色A", contentMd: "角色视角剧情（占位）。", taskMd: "角色任务（占位）。" },
+      { name: "角色B", contentMd: "角色视角剧情（占位）。", taskMd: "角色任务（占位）。" },
+      { name: "角色C", contentMd: "角色视角剧情（占位）。", taskMd: "角色任务（占位）。" },
+    ],
+    clues: [
+      { title: "线索一", triggerMd: "触发条件（占位）。", contentMd: "线索内容（占位）。" },
+      { title: "线索二", triggerMd: "触发条件（占位）。", contentMd: "线索内容（占位）。" },
+    ],
+    tags: context.tags.length > 0 ? context.tags : seed.tags,
+  }));
 };
 
 const buildAuditWarnings = (
@@ -177,6 +232,26 @@ export const buildMockResult = ({
     clues?: ClueDraft[];
   };
 }): AiResult => {
+  if (action === "director") {
+    const warnings: string[] = [];
+    const hasExisting =
+      normalizeList(current?.dmBackground ?? context.dmBackground).length > 0 ||
+      normalizeList(current?.dmFlow ?? context.dmFlow).length > 0 ||
+      normalizeList(current?.truth ?? context.truth).length > 0 ||
+      (current?.roles ?? context.roles).some((role) => normalizeList(role.contentMd).length > 0) ||
+      (current?.clues ?? context.clues).some((clue) => normalizeList(clue.contentMd).length > 0);
+
+    if (hasExisting) {
+      warnings.push("当前已有内容，应用梗概会覆盖对应板块内容。");
+    }
+
+    return {
+      summary: "生成了 3 个梗概卡片，选择一个初始化四大板块。",
+      warnings,
+      changes: [],
+      ideas: buildDirectorIdeas(context),
+    };
+  }
   if (action === "audit") {
     const warnings = buildAuditWarnings(context, current);
     return {

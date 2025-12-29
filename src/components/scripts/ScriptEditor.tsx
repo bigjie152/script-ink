@@ -16,17 +16,29 @@ const tabs = [
 
 type TabId = (typeof tabs)[number]["id"];
 
-type AiAction = "generate" | "improve" | "audit";
+type AiAction = "generate" | "improve" | "audit" | "director";
 type AiMode = "light" | "standard";
 type AiChange = {
   target: "dmBackground" | "dmFlow" | "truth" | "roles" | "clues";
   action: "replace" | "append";
   value: unknown;
 };
+type DirectorIdea = {
+  id: string;
+  title: string;
+  logline: string;
+  truth: string;
+  dmBackground: string;
+  dmFlow: string;
+  roles: { name: string; contentMd: string; taskMd?: string }[];
+  clues: { title: string; contentMd: string; triggerMd?: string }[];
+  tags: string[];
+};
 type AiResult = {
   summary: string;
   warnings: string[];
   changes: AiChange[];
+  ideas?: DirectorIdea[];
 };
 
 type ScriptEditorProps = {
@@ -198,17 +210,48 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
     setAiMessage("已应用 AI 改动");
   };
 
+  const applyDirectorIdea = (idea: DirectorIdea) => {
+    if (!title.trim()) setTitle(idea.title);
+    if (!summary.trim()) setSummary(idea.logline);
+    if (idea.tags.length > 0) {
+      setTagInput(idea.tags.map((tag) => (tag.startsWith("#") ? tag : `#${tag}`)).join(" "));
+    }
+    setDmBackground(idea.dmBackground);
+    setDmFlow(idea.dmFlow);
+    setTruth(idea.truth);
+    setRoleItems(
+      idea.roles.map((role) => ({
+        id: crypto.randomUUID(),
+        name: role.name ?? "",
+        contentMd: role.contentMd ?? "",
+        taskMd: role.taskMd ?? "",
+      }))
+    );
+    setClueItems(
+      idea.clues.map((clue) => ({
+        id: crypto.randomUUID(),
+        title: clue.title ?? "",
+        contentMd: clue.contentMd ?? "",
+        triggerMd: clue.triggerMd ?? "",
+      }))
+    );
+    setAiResult(null);
+    setAiMessage("已应用梗概初始化内容");
+  };
+
   const runAi = async () => {
     setAiLoading(true);
     setAiMessage(null);
     setAiResult(null);
+
+    const scope = aiAction === "director" ? "global" : activeTab;
 
     const response = await fetch("/api/ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         scriptId: script.id,
-        scope: activeTab,
+        scope,
         action: aiAction,
         mode: aiMode,
         instruction: aiInstruction,
@@ -539,6 +582,7 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
                 <option value="generate">生成</option>
                 <option value="improve">改写/补全</option>
                 <option value="audit">质检</option>
+                <option value="director">导演模式</option>
               </Select>
             </label>
             <label className="text-xs text-ink-600">
@@ -579,6 +623,31 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
                       <li key={`${warning}-${index}`}>{warning}</li>
                     ))}
                   </ul>
+                </div>
+              )}
+              {aiResult.ideas && aiResult.ideas.length > 0 && (
+                <div className="grid gap-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-ink-500">梗概卡片</p>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {aiResult.ideas.map((idea) => (
+                      <div key={idea.id} className="rounded-2xl border border-ink-100 bg-white/80 p-4 shadow-sm">
+                        <h4 className="text-sm font-semibold text-ink-900">{idea.title}</h4>
+                        <p className="mt-2 text-xs text-ink-600">{idea.logline}</p>
+                        {idea.tags.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1 text-[10px] text-ink-500">
+                            {idea.tags.map((tag) => (
+                              <span key={`${idea.id}-${tag}`} className="rounded-full border border-ink-100 px-2 py-1">
+                                {tag.startsWith("#") ? tag : `#${tag}`}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <Button type="button" className="mt-3 w-full" onClick={() => applyDirectorIdea(idea)}>
+                          使用该梗概
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               {aiResult.changes.length > 0 && (

@@ -37,8 +37,8 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => null)) as AiRequestBody | null;
   const scriptId = body?.scriptId?.trim() ?? "";
-  const scope = body?.scope ?? "global";
   const action = body?.action ?? "generate";
+  const scope = action === "director" ? "global" : (body?.scope ?? "global");
   const mode = body?.mode ?? "light";
   const instruction = body?.instruction ?? "";
 

@@ -10,7 +10,7 @@
 {
   "scriptId": "string",
   "scope": "dm | roles | clues | truth | global",
-  "action": "generate | improve | audit",
+  "action": "generate | improve | audit | director",
   "mode": "light | standard",
   "instruction": "string",
   "current": {
@@ -33,6 +33,19 @@
     "warnings": ["string"],
     "changes": [
       { "target": "dmBackground | dmFlow | truth | roles | clues", "action": "replace | append", "value": {} }
+    ],
+    "ideas": [
+      {
+        "id": "string",
+        "title": "string",
+        "logline": "string",
+        "truth": "string",
+        "dmBackground": "string",
+        "dmFlow": "string",
+        "roles": [{ "name": "string", "contentMd": "string", "taskMd": "string" }],
+        "clues": [{ "title": "string", "contentMd": "string", "triggerMd": "string" }],
+        "tags": ["string"]
+      }
     ]
   },
   "context": {
