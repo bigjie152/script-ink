@@ -13,8 +13,6 @@ import {
 } from "@/services/ai_agent_service";
 import {
   getAiConfig,
-  requestDeepSeek,
-  requestDeepSeekStream,
   requestGoogle,
   requestGoogleStream,
 } from "@/services/ai_client";
@@ -121,12 +119,21 @@ ${body?.current
   let aiError = "";
   if (useStream) {
     const encoder = new TextEncoder();
-    const getStreamDelta = (provider: "deepseek" | "google", payload: any) => {
+    type GoogleStreamPayload = {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    type DeepSeekStreamPayload = {
+      choices?: Array<{ delta?: { content?: string } }>;
+    };
+    const getStreamDelta = (provider: "deepseek" | "google", payload: unknown) => {
+      if (!payload || typeof payload !== "object") return "";
       if (provider === "google") {
-        const parts = payload?.candidates?.[0]?.content?.parts ?? [];
-        return parts.map((part: { text?: string }) => part.text ?? "").join("");
+        const data = payload as GoogleStreamPayload;
+        const parts = data.candidates?.[0]?.content?.parts ?? [];
+        return parts.map((part) => part.text ?? "").join("");
       }
-      return payload?.choices?.[0]?.delta?.content ?? "";
+      const data = payload as DeepSeekStreamPayload;
+      return data.choices?.[0]?.delta?.content ?? "";
     };
     const stream = new ReadableStream({
       async start(controller) {
