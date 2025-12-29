@@ -355,7 +355,12 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
             if (payload.aiError) {
               setAiMessage(payload.aiError);
             } else if (payload.aiSource) {
-              setAiMessage(`来源：${payload.aiSource === "deepseek" ? "DeepSeek" : "占位"}`);
+              const label = payload.aiSource === "google"
+                ? "Google AI Studio"
+                : payload.aiSource === "deepseek"
+                  ? "DeepSeek（已禁用）"
+                  : "占位";
+              setAiMessage(`来源：${label}`);
             }
           } catch {
             setAiMessage("AI 输出解析失败。");
