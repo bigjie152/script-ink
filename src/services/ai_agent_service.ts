@@ -66,6 +66,98 @@ export const getSectorRules = (scope: AiScope) => {
 const appendText = (base: string, extra: string) =>
   base.trim().length === 0 ? extra : `${base.trim()}\n\n${extra}`;
 
+const normalizeList = (value: string | undefined | null) => (value ?? "").trim();
+
+const hasKeyword = (value: string, keywords: string[]) =>
+  keywords.some((keyword) => value.toLowerCase().includes(keyword.toLowerCase()));
+
+const findDuplicates = (items: string[]) => {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  items.forEach((item) => {
+    const normalized = item.trim();
+    if (!normalized) return;
+    if (seen.has(normalized)) {
+      duplicates.add(normalized);
+    } else {
+      seen.add(normalized);
+    }
+  });
+  return Array.from(duplicates);
+};
+
+const buildAuditWarnings = (
+  context: AiContextPool,
+  current?: {
+    dmBackground?: string;
+    dmFlow?: string;
+    truth?: string;
+    roles?: RoleDraft[];
+    clues?: ClueDraft[];
+  }
+) => {
+  const warnings: string[] = [];
+  const dmBackground = normalizeList(current?.dmBackground ?? context.dmBackground);
+  const dmFlow = normalizeList(current?.dmFlow ?? context.dmFlow);
+  const truth = normalizeList(current?.truth ?? context.truth);
+  const roles = current?.roles ?? context.roles;
+  const clues = current?.clues ?? context.clues;
+
+  if (!truth) {
+    warnings.push("真相为空，无法完成闭环校验。");
+  }
+
+  if (!context.truthLock.trim()) {
+    warnings.push("真相未锁定，建议先锁定真相骨架。");
+  } else if (truth && context.truthLock.trim() !== truth.trim()) {
+    warnings.push("真相已锁定，但当前内容与锁定版本不一致。");
+  }
+
+  if (!dmBackground) warnings.push("DM 背景为空，建议补充世界观与背景信息。");
+  if (!dmFlow) warnings.push("DM 流程为空，建议补充完整流程。");
+
+  if (!roles.length) {
+    warnings.push("角色剧本为空，建议至少创建 1 个角色。");
+  } else {
+    const emptyNames = roles.filter((role) => !normalizeList(role.name)).length;
+    const emptyContent = roles.filter((role) => !normalizeList(role.contentMd)).length;
+    const emptyTasks = roles.filter((role) => !normalizeList(role.taskMd ?? "")).length;
+    const duplicateNames = findDuplicates(roles.map((role) => role.name));
+
+    if (emptyNames > 0) warnings.push(`存在 ${emptyNames} 个未命名角色。`);
+    if (emptyContent > 0) warnings.push(`存在 ${emptyContent} 个角色剧情为空。`);
+    if (emptyTasks > 0) warnings.push(`存在 ${emptyTasks} 个角色任务为空。`);
+    if (duplicateNames.length > 0) warnings.push(`角色名称重复：${duplicateNames.join("、")}`);
+  }
+
+  if (!clues.length) {
+    warnings.push("线索库为空，建议至少创建 1 条线索。");
+  } else {
+    const emptyTitles = clues.filter((clue) => !normalizeList(clue.title)).length;
+    const emptyContent = clues.filter((clue) => !normalizeList(clue.contentMd)).length;
+    const emptyTriggers = clues.filter((clue) => !normalizeList(clue.triggerMd ?? "")).length;
+    const duplicateTitles = findDuplicates(clues.map((clue) => clue.title));
+
+    if (emptyTitles > 0) warnings.push(`存在 ${emptyTitles} 条未命名线索。`);
+    if (emptyContent > 0) warnings.push(`存在 ${emptyContent} 条线索内容为空。`);
+    if (emptyTriggers > 0) warnings.push(`存在 ${emptyTriggers} 条线索触发条件为空。`);
+    if (duplicateTitles.length > 0) warnings.push(`线索名称重复：${duplicateTitles.join("、")}`);
+  }
+
+  if (truth) {
+    const missingFields: string[] = [];
+    if (!hasKeyword(truth, ["动机", "motive"])) missingFields.push("动机");
+    if (!hasKeyword(truth, ["手法", "手段", "method"])) missingFields.push("手法");
+    if (!hasKeyword(truth, ["时间", "时间线", "timeline"])) missingFields.push("时间线");
+    if (!hasKeyword(truth, ["证据", "线索", "evidence", "clue"])) missingFields.push("证据链");
+    if (missingFields.length > 0) {
+      warnings.push(`真相要素可能不完整：缺少 ${missingFields.join("、")}`);
+    }
+  }
+
+  return warnings;
+};
+
 export const buildMockResult = ({
   scope,
   action,
@@ -86,12 +178,12 @@ export const buildMockResult = ({
   };
 }): AiResult => {
   if (action === "audit") {
+    const warnings = buildAuditWarnings(context, current);
     return {
-      summary: "生成了质检清单（占位输出）",
-      warnings: [
-        "未发现明显冲突（占位）。",
-        "建议补齐证据链与时间线锚点。",
-      ],
+      summary: warnings.length > 0
+        ? `发现 ${warnings.length} 项需要关注的内容。`
+        : "未发现明显问题。",
+      warnings,
       changes: [],
     };
   }
