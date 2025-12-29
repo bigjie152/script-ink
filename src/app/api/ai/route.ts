@@ -11,7 +11,7 @@ import {
   type RoleDraft,
   type ClueDraft,
 } from "@/services/ai_agent_service";
-import { getAiConfig, requestDeepSeek } from "@/services/ai_client";
+import { getAiConfig, requestDeepSeek, requestDeepSeekStream } from "@/services/ai_client";
 import { getSystemPrompt } from "@/services/ai_prompt_templates";
 import { getTruthLock } from "@/services/truth_lock_controller";
 
@@ -106,11 +106,102 @@ ${body?.current
 - 操作：${action}
 `;
 
+  const url = new URL(request.url);
+  const useStream = url.searchParams.get("stream") === "1";
   const aiConfig = getAiConfig();
   let result;
   let aiText = "";
   let aiSource = "mock";
   let aiError = "";
+  if (useStream) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        if (!aiConfig) {
+          const payload = JSON.stringify({ message: "AI 配置缺失，已使用占位输出。" });
+          controller.enqueue(encoder.encode(`event: error\ndata: ${payload}\n\n`));
+          controller.close();
+          return;
+        }
+
+        try {
+          const bodyStream = await requestDeepSeekStream(aiConfig, [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: contextMessage },
+            { role: "user", content: instruction || "（无额外指令）" },
+          ]);
+          const reader = bodyStream.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let fullText = "";
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const parts = buffer.split("\n\n");
+            buffer = parts.pop() ?? "";
+
+            for (const part of parts) {
+              const lines = part.split(/\r?\n/).filter(Boolean);
+              const dataLines = lines
+                .filter((line) => line.startsWith("data:"))
+                .map((line) => line.replace(/^data:\s*/, ""));
+              const data = dataLines.join("");
+              if (!data) continue;
+              if (data === "[DONE]") continue;
+              let payload: { choices?: Array<{ delta?: { content?: string } }> };
+              try {
+                payload = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }> };
+              } catch {
+                continue;
+              }
+              const delta = payload?.choices?.[0]?.delta?.content ?? "";
+              if (delta) {
+                fullText += delta;
+                controller.enqueue(
+                  encoder.encode(`event: chunk\ndata: ${JSON.stringify({ chunk: delta })}\n\n`)
+                );
+              }
+            }
+          }
+
+          const finalResult = fullText.trim().length > 0
+            ? buildResultFromText({ scope, action, text: fullText })
+            : buildMockResult({
+                scope,
+                action,
+                mode,
+                context: contextPool,
+                current: body?.current,
+              });
+
+          controller.enqueue(
+            encoder.encode(
+              `event: done\ndata: ${JSON.stringify({
+                result: finalResult,
+                aiText: fullText,
+                aiSource: "deepseek",
+              })}\n\n`
+            )
+          );
+          controller.close();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "DeepSeek 调用失败";
+          controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ message })}\n\n`));
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
+  }
   if (aiConfig) {
     try {
       aiText = await requestDeepSeek(aiConfig, [

@@ -52,3 +52,30 @@ export const requestDeepSeek = async (config: AiConfig, messages: AiMessage[]) =
   };
   return data.choices?.[0]?.message?.content ?? "";
 };
+
+export const requestDeepSeekStream = async (config: AiConfig, messages: AiMessage[]) => {
+  const response = await fetch(`${config.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: config.model,
+      messages,
+      temperature: 0.7,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`DeepSeek API error: ${response.status} ${detail}`);
+  }
+
+  if (!response.body) {
+    throw new Error("DeepSeek API stream is unavailable.");
+  }
+
+  return response.body;
+};

@@ -18,6 +18,11 @@ const BASE_PROMPT = `你是“Script Ink 剧本杀创作与编辑助手”。你
 7) 避免时间线冲突与“一锤定音”过早。
 8) 用户输入不改写意图，只优化表达与结构。`;
 
+const FORMAT_RULES = `【格式规范】
+1) 不输出 HTML 标签或内联样式。
+2) 不使用 Markdown 表格，改用列表或小标题。
+3) 避免超长段落，建议 3-6 行一段。`;
+
 const TRUTH_PROMPT = `【当前板块：真相】
 目标：生成或修订“真相骨架”，作为唯一事实源。
 
@@ -122,10 +127,10 @@ const GLOBAL_PROMPT = `【当前板块：全局】
 
 export const getSystemPrompt = ({ scope, action }: { scope: AiScope; action: AiAction }) => {
   if (action === "audit") {
-    return `${BASE_PROMPT}\n\n${AUDIT_PROMPT}`;
+    return `${BASE_PROMPT}\n\n${FORMAT_RULES}\n\n${AUDIT_PROMPT}`;
   }
   if (action === "director") {
-    return `${BASE_PROMPT}\n\n${DIRECTOR_PROMPT}`;
+    return `${BASE_PROMPT}\n\n${FORMAT_RULES}\n\n${DIRECTOR_PROMPT}`;
   }
 
   const scoped = scope === "truth"
@@ -138,5 +143,5 @@ export const getSystemPrompt = ({ scope, action }: { scope: AiScope; action: AiA
           ? DM_PROMPT
           : GLOBAL_PROMPT;
 
-  return `${BASE_PROMPT}\n\n${scoped}`;
+  return `${BASE_PROMPT}\n\n${FORMAT_RULES}\n\n${scoped}`;
 };

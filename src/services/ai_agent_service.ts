@@ -213,6 +213,13 @@ const buildAuditWarnings = (
   return warnings;
 };
 
+const sanitizeAiText = (value: string) => value
+  .replace(/<br\s*\/?>/gi, "\n")
+  .replace(/<\/?[^>]+>/g, "")
+  .replace(/\r\n/g, "\n")
+  .replace(/\n{3,}/g, "\n\n")
+  .trim();
+
 const extractJsonPayload = (value: string) => {
   const start = value.indexOf("[");
   const end = value.lastIndexOf("]");
@@ -310,7 +317,7 @@ export const buildResultFromText = ({
   action: AiAction;
   text: string;
 }): AiResult => {
-  const cleaned = text.trim();
+  const cleaned = sanitizeAiText(text);
 
   if (action === "director") {
     try {

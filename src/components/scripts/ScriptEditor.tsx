@@ -91,6 +91,9 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
   const [aiResult, setAiResult] = useState<AiResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
+  const [aiStreaming, setAiStreaming] = useState(false);
+  const [aiStreamText, setAiStreamText] = useState("");
+  const [aiStreamEnabled, setAiStreamEnabled] = useState(true);
   const [aiSelected, setAiSelected] = useState<number[]>([]);
   const [truthLocked, setTruthLocked] = useState(false);
   const [lockMessage, setLockMessage] = useState<string | null>(null);
@@ -289,38 +292,129 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
     setAiMessage("已应用梗概初始化内容");
   };
 
+  const parseSseEvent = (raw: string) => {
+    const lines = raw.split(/\r?\n/);
+    let event = "message";
+    let data = "";
+    lines.forEach((line) => {
+      if (line.startsWith("event:")) {
+        event = line.replace("event:", "").trim();
+      }
+      if (line.startsWith("data:")) {
+        data += line.replace("data:", "").trim();
+      }
+    });
+    return { event, data };
+  };
+
+  const runAiStream = async (payload: Record<string, unknown>) => {
+    setAiStreaming(true);
+    setAiStreamText("");
+
+    const response = await fetch("/api/ai?stream=1", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok || !response.body) {
+      setAiMessage("AI 流式输出失败，请稍后重试。");
+      setAiLoading(false);
+      setAiStreaming(false);
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() ?? "";
+
+      for (const part of parts) {
+        const { event, data } = parseSseEvent(part);
+        if (!data) continue;
+        if (event === "chunk") {
+          try {
+            const payload = JSON.parse(data) as { chunk?: string };
+            if (payload.chunk) {
+              setAiStreamText((prev) => prev + payload.chunk);
+            }
+          } catch {
+            // ignore malformed chunk
+          }
+        }
+        if (event === "done") {
+          try {
+            const payload = JSON.parse(data) as { result?: AiResult; aiSource?: string; aiError?: string };
+            setAiResult(payload.result ?? null);
+            if (payload.aiError) {
+              setAiMessage(payload.aiError);
+            } else if (payload.aiSource) {
+              setAiMessage(`来源：${payload.aiSource === "deepseek" ? "DeepSeek" : "占位"}`);
+            }
+          } catch {
+            setAiMessage("AI 输出解析失败。");
+          }
+        }
+        if (event === "error") {
+          try {
+            const payload = JSON.parse(data) as { message?: string };
+            setAiMessage(payload.message ?? "AI 调用失败。");
+          } catch {
+            setAiMessage("AI 调用失败。");
+          }
+        }
+      }
+    }
+
+    setAiLoading(false);
+    setAiStreaming(false);
+  };
+
   const runAi = async () => {
     setAiLoading(true);
     setAiMessage(null);
     setAiResult(null);
+    setAiStreamText("");
 
     const scope = aiAction === "director" ? "global" : activeTab;
+    const payload = {
+      scriptId: script.id,
+      scope,
+      action: aiAction,
+      mode: aiMode,
+      instruction: aiInstruction,
+      current: {
+        dmBackground,
+        dmFlow,
+        truth,
+        roles: roleItems.map((role) => ({
+          name: role.name,
+          contentMd: role.contentMd,
+          taskMd: role.taskMd ?? "",
+        })),
+        clues: clueItems.map((clue) => ({
+          title: clue.title,
+          contentMd: clue.contentMd,
+          triggerMd: clue.triggerMd ?? "",
+        })),
+      },
+    };
+
+    if (aiStreamEnabled) {
+      await runAiStream(payload);
+      return;
+    }
 
     const response = await fetch("/api/ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        scriptId: script.id,
-        scope,
-        action: aiAction,
-        mode: aiMode,
-        instruction: aiInstruction,
-        current: {
-          dmBackground,
-          dmFlow,
-          truth,
-          roles: roleItems.map((role) => ({
-            name: role.name,
-            contentMd: role.contentMd,
-            taskMd: role.taskMd ?? "",
-          })),
-          clues: clueItems.map((clue) => ({
-            title: clue.title,
-            contentMd: clue.contentMd,
-            triggerMd: clue.triggerMd ?? "",
-          })),
-        },
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -652,12 +746,32 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
             </label>
           </div>
 
+          <div className="flex flex-wrap items-center gap-3 text-xs text-ink-600">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={aiStreamEnabled}
+                onChange={(event) => setAiStreamEnabled(event.target.checked)}
+              />
+              流式显示（生成中可预览）
+            </label>
+          </div>
+
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" onClick={runAi} disabled={aiLoading}>
               {aiLoading ? "执行中..." : "执行 AI"}
             </Button>
             {aiMessage && <span className="text-xs text-ink-600">{aiMessage}</span>}
           </div>
+
+          {aiStreaming && (
+            <div className="grid gap-2 rounded-2xl border border-ink-100 bg-white/80 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-500">实时生成中</p>
+              <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-words text-xs text-ink-700">
+                {aiStreamText || "模型正在生成，请稍候..."}
+              </pre>
+            </div>
+          )}
 
           {aiResult && (
             <div className="grid gap-3 rounded-2xl border border-ink-100 bg-paper-50/80 p-4">
@@ -751,13 +865,13 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
                             <div className="mt-3 grid gap-3 md:grid-cols-2">
                               <div className="rounded-xl border border-ink-100 bg-paper-50/80 p-3">
                                 <p className="text-[10px] uppercase tracking-[0.2em] text-ink-500">原内容</p>
-                                <pre className="mt-2 max-h-40 whitespace-pre-wrap break-words text-xs text-ink-600">
+                                <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-words text-xs text-ink-600">
                                   {currentText || "（空）"}
                                 </pre>
                               </div>
                               <div className="rounded-xl border border-ink-100 bg-emerald-50/80 p-3">
                                 <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-600">建议内容</p>
-                                <pre className="mt-2 max-h-40 whitespace-pre-wrap break-words text-xs text-emerald-800">
+                                <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-words text-xs text-emerald-800">
                                   {nextText || "（空）"}
                                 </pre>
                               </div>
