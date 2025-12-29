@@ -4,7 +4,8 @@
 
 ## 功能概览
 - 结构化剧本编辑：大纲 / 角色 / 线索 / DM 手册
-- Fork 分支机制：追踪 root_id / parent_id
+- 改编分支机制：追踪 root_id / parent_id
+- 协作面板：问题单 / 版本记录 / 改编合并
 - 社区广场：最新 / 热门排序
 - 登录评分：登录用户可评分
 - 收藏夹：公开剧本可收藏并分组管理
@@ -21,6 +22,9 @@ wrangler d1 execute script-ink --file=./drizzle/0001_comments.sql
 wrangler d1 execute script-ink --file=./drizzle/0002_collections.sql
 wrangler d1 execute script-ink --file=./drizzle/0003_favorites_folder.sql
 wrangler d1 execute script-ink --file=./drizzle/0004_script_likes.sql
+wrangler d1 execute script-ink --file=./drizzle/0005_script_versions.sql
+wrangler d1 execute script-ink --file=./drizzle/0006_script_issues.sql
+wrangler d1 execute script-ink --file=./drizzle/0007_script_merge_requests.sql
 ```
 
 ## 本地开发

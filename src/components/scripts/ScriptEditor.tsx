@@ -35,6 +35,7 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
   const dmSection = sections.find((section) => section.sectionType === "dm");
   const [title, setTitle] = useState(script.title);
   const [summary, setSummary] = useState(script.summary ?? "");
+  const [versionNote, setVersionNote] = useState("");
   const [isPublic, setIsPublic] = useState(script.isPublic === 1);
   const [allowFork, setAllowFork] = useState(script.allowFork === 1);
   const [outline, setOutline] = useState(outlineSection?.contentMd ?? "");
@@ -96,6 +97,7 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
       isPublic,
       allowFork,
       tags: tagInput,
+      versionNote: versionNote.trim(),
       sections: {
         outline,
         dm,
@@ -117,6 +119,7 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
     }
 
     setMessage("已保存");
+    setVersionNote("");
   };
 
   return (
@@ -145,6 +148,14 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
             placeholder="用 2-3 句话描述核心故事和推理亮点。"
           />
         </div>
+        <div>
+          <label className="text-xs font-semibold text-ink-600">更新说明（可选）</label>
+          <Input
+            value={versionNote}
+            onChange={(event) => setVersionNote(event.target.value)}
+            placeholder="例如：补充第 3 幕反转、优化线索动机"
+          />
+        </div>
         <div className="flex flex-wrap gap-3 text-xs text-ink-600">
           <label className="flex items-center gap-2">
             <input
@@ -160,7 +171,7 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
               checked={allowFork}
               onChange={(event) => setAllowFork(event.target.checked)}
             />
-            允许 Fork
+            允许改编
           </label>
         </div>
         <div className="flex flex-wrap items-center gap-3">

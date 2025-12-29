@@ -140,3 +140,46 @@ export const scriptLikes = sqliteTable("script_likes", {
   scriptIndex: index("script_likes_script_id_idx").on(table.scriptId),
   userIndex: index("script_likes_user_id_idx").on(table.userId),
 }));
+
+export const scriptVersions = sqliteTable("script_versions", {
+  id: text("id").primaryKey(),
+  scriptId: text("script_id").notNull(),
+  authorId: text("author_id").notNull(),
+  summary: text("summary").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => ({
+  scriptIndex: index("script_versions_script_id_idx").on(table.scriptId),
+  authorIndex: index("script_versions_author_id_idx").on(table.authorId),
+}));
+
+export const scriptIssues = sqliteTable("script_issues", {
+  id: text("id").primaryKey(),
+  scriptId: text("script_id").notNull(),
+  authorId: text("author_id").notNull(),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  status: text("status").notNull(),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => ({
+  scriptIndex: index("script_issues_script_id_idx").on(table.scriptId),
+  authorIndex: index("script_issues_author_id_idx").on(table.authorId),
+  statusIndex: index("script_issues_status_idx").on(table.status),
+}));
+
+export const scriptMergeRequests = sqliteTable("script_merge_requests", {
+  id: text("id").primaryKey(),
+  sourceScriptId: text("source_script_id").notNull(),
+  targetScriptId: text("target_script_id").notNull(),
+  authorId: text("author_id").notNull(),
+  summary: text("summary").notNull(),
+  status: text("status").notNull(),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => ({
+  sourceIndex: index("script_merge_requests_source_idx").on(table.sourceScriptId),
+  targetIndex: index("script_merge_requests_target_idx").on(table.targetScriptId),
+  authorIndex: index("script_merge_requests_author_idx").on(table.authorId),
+  statusIndex: index("script_merge_requests_status_idx").on(table.status),
+}));

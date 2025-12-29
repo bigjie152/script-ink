@@ -44,7 +44,7 @@ export default async function Home({ searchParams }: HomePageProps) {
               剧本杀创作者的协作工作台
             </h1>
             <p className="max-w-2xl text-sm text-ink-600">
-              在这里写作、共创、Fork 与验证你的剧本。让灵感被看见，让版本有迹可循。
+              在这里写作、共创、改编与验证你的剧本。让灵感被看见，让版本有迹可循。
             </p>
             <div className="flex flex-wrap gap-3">
               <Link

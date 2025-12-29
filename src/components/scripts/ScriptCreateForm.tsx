@@ -73,7 +73,7 @@ export const ScriptCreateForm = () => {
             checked={allowFork}
             onChange={(event) => setAllowFork(event.target.checked)}
           />
-          允许 Fork
+          允许改编
         </label>
       </div>
       <Button type="button" onClick={handleSubmit}>

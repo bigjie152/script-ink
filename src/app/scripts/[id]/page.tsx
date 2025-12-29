@@ -13,6 +13,7 @@ import { getCurrentUser } from "@/lib/auth";
 import {
   getFavoriteFolders,
   getScriptCollections,
+  getScriptContributors,
   getScriptDetail,
   getScriptForkChain,
   getScriptLikeSummary,
@@ -55,6 +56,7 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
     ? await getScriptLikeSummary(detail.script.id, user?.id)
     : null;
   const favoriteFolders = user ? await getFavoriteFolders(user.id) : [];
+  const contributors = await getScriptContributors(detail.script.id);
 
   return (
     <div className="grid gap-8">
@@ -90,7 +92,7 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
             {detail.script.allowFork === 1 && user && <ForkButton scriptId={detail.script.id} />}
             {detail.script.allowFork === 1 && !user && (
               <Link href={`/login?next=/scripts/${detail.script.id}`}>
-                <Button variant="outline">登录后 Fork</Button>
+                <Button variant="outline">登录后改编</Button>
               </Link>
             )}
           </div>
@@ -150,12 +152,65 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
             </p>
           </Card>
           <Card>
-            <p className="text-xs uppercase text-ink-500">Fork 可用</p>
+            <p className="text-xs uppercase text-ink-500">改编可用</p>
             <p className="mt-2 text-2xl font-display text-ink-900">
               {detail.script.allowFork === 1 ? "是" : "否"}
             </p>
           </Card>
         </div>
+        <Card>
+          <p className="text-xs uppercase tracking-[0.2em] text-ink-500">共创者</p>
+          {contributors.length === 0 ? (
+            <p className="mt-2 text-sm text-ink-500">暂无共创者，欢迎改编共创。</p>
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {contributors.slice(0, 8).map((person) => (
+                <Badge key={person.authorId}>
+                  {person.authorName} · {person.count}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </Card>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <Card className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-500">问题单面板</p>
+            <p className="mt-2 text-sm text-ink-600">把反馈结构化，避免评论混战。</p>
+          </div>
+          <Link href={`/scripts/${detail.script.id}/issues`}>
+            <Button variant="outline">进入</Button>
+          </Link>
+        </Card>
+        <Card className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-500">版本记录</p>
+            <p className="mt-2 text-sm text-ink-600">查看每次更新的演进轨迹。</p>
+          </div>
+          <Link href={`/scripts/${detail.script.id}/versions`}>
+            <Button variant="outline">查看</Button>
+          </Link>
+        </Card>
+        <Card className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-500">改编谱系</p>
+            <p className="mt-2 text-sm text-ink-600">追踪衍生分支与家族关系。</p>
+          </div>
+          <Link href={`/scripts/${detail.script.id}/lineage`}>
+            <Button variant="outline">浏览</Button>
+          </Link>
+        </Card>
+        <Card className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-500">改编合并</p>
+            <p className="mt-2 text-sm text-ink-600">向原作者提交合并申请。</p>
+          </div>
+          <Link href={`/scripts/${detail.script.id}/merge`}>
+            <Button variant="outline">管理</Button>
+          </Link>
+        </Card>
       </section>
 
       <section className="grid gap-6">

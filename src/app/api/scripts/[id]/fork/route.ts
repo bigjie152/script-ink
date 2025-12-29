@@ -24,7 +24,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
   }
 
   if (detail.script.isPublic !== 1 || detail.script.allowFork !== 1) {
-    return NextResponse.json({ message: "该剧本不可 Fork" }, { status: 403 });
+    return NextResponse.json({ message: "该剧本不可改编" }, { status: 403 });
   }
 
   const db = getDb();
@@ -35,7 +35,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
   await db.insert(scripts).values({
     id: newId,
     authorId: user.id,
-    title: `${detail.script.title}（Fork）`,
+    title: `${detail.script.title}（改编）`,
     summary: detail.script.summary,
     coverUrl: detail.script.coverUrl,
     isPublic: 0,

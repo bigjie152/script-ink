@@ -2,7 +2,7 @@
 import { and, eq, ne, or, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { clues, ratings, roles, scriptSections, scriptTags, scripts } from "@/lib/db/schema";
+import { clues, ratings, roles, scriptSections, scriptTags, scriptVersions, scripts } from "@/lib/db/schema";
 import { getScriptDetail } from "@/lib/data";
 import { normalizeTags } from "@/lib/utils";
 import { syncScriptTags } from "@/lib/tags";
@@ -76,6 +76,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
     ? (body.clues as ClueInput[])
     : [];
   const tagsInput = String(body?.tags ?? "");
+  const versionNote = String(body?.versionNote ?? "").trim();
 
   if (!title) {
     return NextResponse.json({ message: "标题不能为空" }, { status: 400 });
@@ -161,6 +162,16 @@ export async function PUT(request: Request, { params }: RouteContext) {
   const tags = normalizeTags(tagsInput);
   await syncScriptTags(id, tags);
 
+  if (versionNote) {
+    await db.insert(scriptVersions).values({
+      id: crypto.randomUUID(),
+      scriptId: id,
+      authorId: user.id,
+      summary: versionNote,
+      createdAt: now,
+    });
+  }
+
   return NextResponse.json({ ok: true });
 }
 
@@ -192,7 +203,7 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
     );
 
   if ((forkRows[0]?.count ?? 0) > 0) {
-    return NextResponse.json({ message: "已有 Fork，无法删除" }, { status: 409 });
+    return NextResponse.json({ message: "已有改编，无法删除" }, { status: 409 });
   }
 
   await db.delete(ratings).where(eq(ratings.scriptId, id));

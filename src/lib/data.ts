@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, like, ne, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import {
   clues,
@@ -8,8 +8,11 @@ import {
   roles,
   scriptFavorites,
   scriptLikes,
+  scriptIssues,
+  scriptMergeRequests,
   scriptSections,
   scriptTags,
+  scriptVersions,
   scripts,
   tags,
   users,
@@ -412,5 +415,197 @@ export const getUserComments = async (userId: string) => {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     likeCount: row.likeCount ?? 0,
+  }));
+};
+
+export const getScriptVersions = async (scriptId: string) => {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: scriptVersions.id,
+      summary: scriptVersions.summary,
+      createdAt: scriptVersions.createdAt,
+      authorId: scriptVersions.authorId,
+      authorName: users.displayName,
+    })
+    .from(scriptVersions)
+    .leftJoin(users, eq(users.id, scriptVersions.authorId))
+    .where(eq(scriptVersions.scriptId, scriptId))
+    .orderBy(desc(scriptVersions.createdAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    summary: row.summary,
+    createdAt: row.createdAt,
+    authorId: row.authorId,
+    authorName: row.authorName ?? "匿名",
+  }));
+};
+
+export const getScriptIssues = async (scriptId: string) => {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: scriptIssues.id,
+      type: scriptIssues.type,
+      title: scriptIssues.title,
+      content: scriptIssues.content,
+      status: scriptIssues.status,
+      createdAt: scriptIssues.createdAt,
+      updatedAt: scriptIssues.updatedAt,
+      authorId: scriptIssues.authorId,
+      authorName: users.displayName,
+    })
+    .from(scriptIssues)
+    .leftJoin(users, eq(users.id, scriptIssues.authorId))
+    .where(eq(scriptIssues.scriptId, scriptId))
+    .orderBy(desc(scriptIssues.createdAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    type: row.type,
+    title: row.title,
+    content: row.content,
+    status: row.status,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    authorId: row.authorId,
+    authorName: row.authorName ?? "匿名",
+  }));
+};
+
+export const getScriptLineage = async (scriptId: string) => {
+  const db = getDb();
+  const targetRows = await db
+    .select({
+      id: scripts.id,
+      title: scripts.title,
+      rootId: scripts.rootId,
+      parentId: scripts.parentId,
+      authorId: scripts.authorId,
+      authorName: users.displayName,
+      createdAt: scripts.createdAt,
+    })
+    .from(scripts)
+    .leftJoin(users, eq(users.id, scripts.authorId))
+    .where(eq(scripts.id, scriptId))
+    .limit(1);
+
+  const target = targetRows[0];
+  if (!target) return null;
+  const resolvedRootId = target.rootId ?? target.id;
+
+  const nodes = await db
+    .select({
+      id: scripts.id,
+      title: scripts.title,
+      rootId: scripts.rootId,
+      parentId: scripts.parentId,
+      authorId: scripts.authorId,
+      authorName: users.displayName,
+      createdAt: scripts.createdAt,
+    })
+    .from(scripts)
+    .leftJoin(users, eq(users.id, scripts.authorId))
+    .where(
+      or(
+        eq(scripts.id, resolvedRootId),
+        eq(scripts.rootId, resolvedRootId)
+      )
+    )
+    .orderBy(scripts.createdAt);
+
+  return {
+    target,
+    rootId: resolvedRootId,
+    nodes: nodes.map((node) => ({
+      ...node,
+      authorName: node.authorName ?? "匿名",
+    })),
+  };
+};
+
+export const getScriptContributors = async (scriptId: string) => {
+  const lineage = await getScriptLineage(scriptId);
+  if (!lineage) return [];
+
+  const counts = new Map<string, { authorId: string; authorName: string; count: number }>();
+  for (const node of lineage.nodes) {
+    const existing = counts.get(node.authorId) ?? {
+      authorId: node.authorId,
+      authorName: node.authorName ?? "匿名",
+      count: 0,
+    };
+    existing.count += 1;
+    counts.set(node.authorId, existing);
+  }
+
+  return Array.from(counts.values()).sort((a, b) => b.count - a.count);
+};
+
+export const getScriptMergeRequests = async (targetScriptId: string) => {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: scriptMergeRequests.id,
+      status: scriptMergeRequests.status,
+      summary: scriptMergeRequests.summary,
+      createdAt: scriptMergeRequests.createdAt,
+      updatedAt: scriptMergeRequests.updatedAt,
+      authorId: scriptMergeRequests.authorId,
+      authorName: users.displayName,
+      sourceId: scriptMergeRequests.sourceScriptId,
+      sourceTitle: scripts.title,
+    })
+    .from(scriptMergeRequests)
+    .innerJoin(scripts, eq(scripts.id, scriptMergeRequests.sourceScriptId))
+    .leftJoin(users, eq(users.id, scriptMergeRequests.authorId))
+    .where(eq(scriptMergeRequests.targetScriptId, targetScriptId))
+    .orderBy(desc(scriptMergeRequests.createdAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    status: row.status,
+    summary: row.summary,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    authorId: row.authorId,
+    authorName: row.authorName ?? "匿名",
+    sourceId: row.sourceId,
+    sourceTitle: row.sourceTitle ?? "未命名剧本",
+  }));
+};
+
+export const getMergeCandidates = async (userId: string, targetScriptId: string) => {
+  const db = getDb();
+  const targetRows = await db
+    .select({ id: scripts.id, rootId: scripts.rootId })
+    .from(scripts)
+    .where(eq(scripts.id, targetScriptId))
+    .limit(1);
+  if (targetRows.length === 0) return [];
+
+  const resolvedRootId = targetRows[0].rootId ?? targetRows[0].id;
+  const rows = await db
+    .select({
+      id: scripts.id,
+      title: scripts.title,
+    })
+    .from(scripts)
+    .where(
+      and(
+        eq(scripts.authorId, userId),
+        or(
+          eq(scripts.rootId, resolvedRootId),
+          eq(scripts.id, resolvedRootId)
+        ),
+        ne(scripts.id, targetScriptId)
+      )
+    )
+    .orderBy(desc(scripts.createdAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
   }));
 };

@@ -71,7 +71,7 @@ export const ScriptCard = ({
       </div>
       <div className="mt-auto flex items-center justify-between text-xs text-ink-500">
         <span>评分 {rating.average.toFixed(1)} · {rating.count} 人</span>
-        <span>Fork {forkCount}</span>
+        <span>改编 {forkCount}</span>
       </div>
     </Card>
   );
