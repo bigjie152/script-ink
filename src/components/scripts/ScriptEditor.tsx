@@ -1,10 +1,11 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Badge } from "@/components/ui/Badge";
+import { Select } from "@/components/ui/Select";
 
 const tabs = [
   { id: "dm", label: "DM 手册 / 游戏流程" },
@@ -14,6 +15,19 @@ const tabs = [
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
+
+type AiAction = "generate" | "improve" | "audit";
+type AiMode = "light" | "standard";
+type AiChange = {
+  target: "dmBackground" | "dmFlow" | "truth" | "roles" | "clues";
+  action: "replace" | "append";
+  value: unknown;
+};
+type AiResult = {
+  summary: string;
+  warnings: string[];
+  changes: AiChange[];
+};
 
 type ScriptEditorProps = {
   script: {
@@ -59,6 +73,14 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
   const [tagInput, setTagInput] = useState(tags.map((tag) => `#${tag}`).join(" "));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [aiAction, setAiAction] = useState<AiAction>("generate");
+  const [aiMode, setAiMode] = useState<AiMode>("light");
+  const [aiInstruction, setAiInstruction] = useState("");
+  const [aiResult, setAiResult] = useState<AiResult | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
+  const [truthLocked, setTruthLocked] = useState(false);
+  const [lockMessage, setLockMessage] = useState<string | null>(null);
 
   const addRole = () => {
     setRoleItems((prev) => [
@@ -95,6 +117,130 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
   };
 
   const canSave = useMemo(() => title.trim().length > 0, [title]);
+  const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label ?? "";
+
+  useEffect(() => {
+    const loadTruthLock = async () => {
+      const response = await fetch(`/api/scripts/${script.id}/truth-lock`);
+      if (!response.ok) return;
+      const data = (await response.json()) as { locked?: boolean };
+      setTruthLocked(Boolean(data.locked));
+    };
+
+    void loadTruthLock();
+  }, [script.id]);
+
+  const handleTruthLock = async () => {
+    setLockMessage(null);
+    const response = await fetch(`/api/scripts/${script.id}/truth-lock`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ truth }),
+    });
+
+    if (!response.ok) {
+      const data = (await response.json().catch(() => null)) as { message?: string } | null;
+      setLockMessage(data?.message ?? "真相锁定失败。");
+      return;
+    }
+
+    setTruthLocked(true);
+    setLockMessage("真相已锁定");
+  };
+
+  const applyAiChanges = (changes: AiChange[]) => {
+    const applyText = (current: string, action: "replace" | "append", value: string) => {
+      if (action === "replace") return value;
+      return current.trim().length === 0 ? value : `${current.trim()}\n\n${value}`;
+    };
+
+    changes.forEach((change) => {
+      if (change.target === "dmBackground") {
+        setDmBackground((prev) => applyText(prev, change.action, String(change.value ?? "")));
+      }
+      if (change.target === "dmFlow") {
+        setDmFlow((prev) => applyText(prev, change.action, String(change.value ?? "")));
+      }
+      if (change.target === "truth") {
+        setTruth((prev) => applyText(prev, change.action, String(change.value ?? "")));
+      }
+      if (change.target === "roles") {
+        const nextRoles = (Array.isArray(change.value) ? change.value : []) as Array<{ id?: string; name: string; contentMd: string; taskMd?: string }>;
+        const normalized = nextRoles.map((role) => ({
+          id: role.id ?? crypto.randomUUID(),
+          name: role.name ?? "",
+          contentMd: role.contentMd ?? "",
+          taskMd: role.taskMd ?? "",
+        }));
+        if (change.action === "replace") {
+          setRoleItems(normalized);
+        } else {
+          setRoleItems((prev) => [...prev, ...normalized]);
+        }
+      }
+      if (change.target === "clues") {
+        const nextClues = (Array.isArray(change.value) ? change.value : []) as Array<{ id?: string; title: string; contentMd: string; triggerMd?: string }>;
+        const normalized = nextClues.map((clue) => ({
+          id: clue.id ?? crypto.randomUUID(),
+          title: clue.title ?? "",
+          contentMd: clue.contentMd ?? "",
+          triggerMd: clue.triggerMd ?? "",
+        }));
+        if (change.action === "replace") {
+          setClueItems(normalized);
+        } else {
+          setClueItems((prev) => [...prev, ...normalized]);
+        }
+      }
+    });
+
+    setAiResult(null);
+    setAiMessage("已应用 AI 改动");
+  };
+
+  const runAi = async () => {
+    setAiLoading(true);
+    setAiMessage(null);
+    setAiResult(null);
+
+    const response = await fetch("/api/ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        scriptId: script.id,
+        scope: activeTab,
+        action: aiAction,
+        mode: aiMode,
+        instruction: aiInstruction,
+        current: {
+          dmBackground,
+          dmFlow,
+          truth,
+          roles: roleItems.map((role) => ({
+            name: role.name,
+            contentMd: role.contentMd,
+            taskMd: role.taskMd ?? "",
+          })),
+          clues: clueItems.map((clue) => ({
+            title: clue.title,
+            contentMd: clue.contentMd,
+            triggerMd: clue.triggerMd ?? "",
+          })),
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const data = (await response.json().catch(() => null)) as { message?: string } | null;
+      setAiMessage(data?.message ?? "AI 执行失败，请稍后重试。");
+      setAiLoading(false);
+      return;
+    }
+
+    const data = (await response.json()) as { result?: AiResult };
+    setAiResult(data.result ?? null);
+    setAiLoading(false);
+  };
 
   const handleSave = async () => {
     if (!canSave) {
@@ -364,23 +510,99 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
             onChange={(event) => setTruth(event.target.value)}
             placeholder="写明凶手动机、作案过程、关键误导点与最终揭示。"
           />
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-ink-600">
+            <Button variant="outline" type="button" onClick={handleTruthLock}>
+              锁定真相
+            </Button>
+            <span>状态：{truthLocked ? "已锁定" : "未锁定"}</span>
+            {lockMessage && <span className="text-ink-500">{lockMessage}</span>}
+          </div>
         </div>
       )}
 
       <div className="rounded-3xl border border-ink-100 bg-paper-50/80 p-6">
-        <div className="flex items-start justify-between gap-6">
-          <div>
-            <h3 className="font-display text-lg text-ink-900">AI 助手（占位）</h3>
-            <p className="mt-2 text-sm text-ink-600">
-              已预留 API 接口，后续可接入不同厂商模型。
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Badge>润色与扩写</Badge>
-              <Badge>线索提炼</Badge>
-              <Badge>诡计推荐</Badge>
+        <div className="grid gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-display text-lg text-ink-900">AI 助手</h3>
+              <p className="mt-2 text-sm text-ink-600">
+                统一接口已就绪，当前为占位输出，提示词后续补充。
+              </p>
             </div>
+            <Badge>当前板块：{activeTabLabel}</Badge>
           </div>
-          <Button variant="outline" type="button" onClick={() => alert("AI 接口尚未配置")}>试用</Button>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="text-xs text-ink-600">
+              操作类型
+              <Select value={aiAction} onChange={(event) => setAiAction(event.target.value as AiAction)}>
+                <option value="generate">生成</option>
+                <option value="improve">改写/补全</option>
+                <option value="audit">质检</option>
+              </Select>
+            </label>
+            <label className="text-xs text-ink-600">
+              运行模式
+              <Select value={aiMode} onChange={(event) => setAiMode(event.target.value as AiMode)}>
+                <option value="light">轻量</option>
+                <option value="standard">标准</option>
+              </Select>
+            </label>
+            <label className="text-xs text-ink-600">
+              指令补充
+              <Input
+                value={aiInstruction}
+                onChange={(event) => setAiInstruction(event.target.value)}
+                placeholder="如：强调诡计、控制字数等"
+              />
+            </label>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" onClick={runAi} disabled={aiLoading}>
+              {aiLoading ? "执行中..." : "执行 AI"}
+            </Button>
+            {aiMessage && <span className="text-xs text-ink-600">{aiMessage}</span>}
+          </div>
+
+          {aiResult && (
+            <div className="grid gap-3 rounded-2xl border border-ink-100 bg-paper-50/80 p-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-ink-500">AI 输出摘要</p>
+                <p className="mt-2 text-sm text-ink-700">{aiResult.summary}</p>
+              </div>
+              {aiResult.warnings.length > 0 && (
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-ink-500">提示</p>
+                  <ul className="mt-2 list-disc pl-4 text-xs text-ink-600">
+                    {aiResult.warnings.map((warning, index) => (
+                      <li key={`${warning}-${index}`}>{warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {aiResult.changes.length > 0 && (
+                <div className="grid gap-2">
+                  <p className="text-xs uppercase tracking-[0.2em] text-ink-500">将要改动</p>
+                  <ul className="text-xs text-ink-600">
+                    {aiResult.changes.map((change, index) => (
+                      <li key={`${change.target}-${index}`}>
+                        {change.target} · {change.action}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" onClick={() => applyAiChanges(aiResult.changes)}>
+                      应用改动
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => setAiResult(null)}>
+                      放弃
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
