@@ -10,6 +10,7 @@ import {
   type RoleDraft,
   type ClueDraft,
 } from "@/services/ai_agent_service";
+import { getSystemPrompt } from "@/services/ai_prompt_templates";
 import { getTruthLock } from "@/services/truth_lock_controller";
 
 export const runtime = "edge";
@@ -98,6 +99,6 @@ export async function POST(request: Request) {
       Sector_Specific_Rules: getSectorRules(scope),
       User_Instruction: instruction,
     },
-    systemPrompt: "",
+    systemPrompt: getSystemPrompt({ scope, action }),
   });
 }
