@@ -90,10 +90,20 @@ a {
   margin-bottom: 0.6em;
 }
 
+.markdown {
+  max-width: 100%;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 .markdown p {
   margin: 0.6em 0;
   color: var(--ink-700);
   line-height: 1.7;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .markdown a {
@@ -105,10 +115,23 @@ a {
   padding-left: 1.25rem;
   list-style: disc;
   color: var(--ink-700);
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .markdown blockquote {
   border-left: 3px solid var(--ink-200);
   padding-left: 1rem;
   color: var(--ink-600);
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.markdown pre,
+.markdown code {
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }

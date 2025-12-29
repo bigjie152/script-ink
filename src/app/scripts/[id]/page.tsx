@@ -55,6 +55,8 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
   const dmBackgroundContent = linkifyMentions(dmBackground, detail.roles, detail.clues);
   const dmFlowContent = linkifyMentions(dmFlow, detail.roles, detail.clues);
   const truthContent = linkifyMentions(truth, detail.roles, detail.clues);
+  const contentBlock =
+    "w-full max-w-full overflow-hidden break-all whitespace-pre-wrap";
   const collections = detail.script.isPublic === 1
     ? await getScriptCollections(detail.script.id, user?.id)
     : null;
@@ -231,11 +233,15 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
             <div className="mt-4 grid gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-ink-500">背景简介</p>
-                <MarkdownBlock content={dmBackgroundContent || "暂无内容"} />
+                <div className={contentBlock}>
+                  <MarkdownBlock content={dmBackgroundContent || "暂无内容"} />
+                </div>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-ink-500">游戏流程</p>
-                <MarkdownBlock content={dmFlowContent || "暂无内容"} />
+                <div className={contentBlock}>
+                  <MarkdownBlock content={dmFlowContent || "暂无内容"} />
+                </div>
               </div>
             </div>
           </details>
@@ -249,7 +255,9 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
               </span>
             </summary>
             <div className="mt-4">
-              <MarkdownBlock content={truthContent || "暂无内容"} />
+              <div className={contentBlock}>
+                <MarkdownBlock content={truthContent || "暂无内容"} />
+              </div>
             </div>
           </details>
         </Card>
@@ -274,11 +282,15 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
                     <div className="mt-3 grid gap-3">
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-500">角色剧情</p>
-                        <MarkdownBlock content={linkifyMentions(role.contentMd, detail.roles, detail.clues)} />
+                        <div className={contentBlock}>
+                          <MarkdownBlock content={linkifyMentions(role.contentMd, detail.roles, detail.clues)} />
+                        </div>
                       </div>
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-500">角色任务</p>
-                        <MarkdownBlock content={linkifyMentions(role.taskMd ?? "", detail.roles, detail.clues) || "暂无内容"} />
+                        <div className={contentBlock}>
+                          <MarkdownBlock content={linkifyMentions(role.taskMd ?? "", detail.roles, detail.clues) || "暂无内容"} />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -305,11 +317,15 @@ export default async function ScriptPage({ params }: ScriptPageProps) {
                     <div className="mt-3 grid gap-3">
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-500">触发环节 / 条件</p>
-                        <MarkdownBlock content={linkifyMentions(clue.triggerMd ?? "", detail.roles, detail.clues) || "暂无内容"} />
+                        <div className={contentBlock}>
+                          <MarkdownBlock content={linkifyMentions(clue.triggerMd ?? "", detail.roles, detail.clues) || "暂无内容"} />
+                        </div>
                       </div>
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-ink-500">线索内容</p>
-                        <MarkdownBlock content={linkifyMentions(clue.contentMd, detail.roles, detail.clues)} />
+                        <div className={contentBlock}>
+                          <MarkdownBlock content={linkifyMentions(clue.contentMd, detail.roles, detail.clues)} />
+                        </div>
                       </div>
                     </div>
                   </div>
