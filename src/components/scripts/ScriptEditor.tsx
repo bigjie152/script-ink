@@ -91,6 +91,7 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
   const [aiResult, setAiResult] = useState<AiResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
+  const [aiSelected, setAiSelected] = useState<number[]>([]);
   const [truthLocked, setTruthLocked] = useState(false);
   const [lockMessage, setLockMessage] = useState<string | null>(null);
 
@@ -141,6 +142,14 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
 
     void loadTruthLock();
   }, [script.id]);
+
+  useEffect(() => {
+    if (!aiResult?.changes) {
+      setAiSelected([]);
+      return;
+    }
+    setAiSelected(aiResult.changes.map((_, index) => index));
+  }, [aiResult]);
 
   const handleTruthLock = async () => {
     setLockMessage(null);
@@ -209,6 +218,38 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
     setAiResult(null);
     setAiMessage("已应用 AI 改动");
   };
+
+  const applySelectedChanges = () => {
+    if (!aiResult) return;
+    const selected = aiResult.changes.filter((_, index) => aiSelected.includes(index));
+    if (selected.length === 0) {
+      setAiMessage("请先选择需要应用的改动。");
+      return;
+    }
+    applyAiChanges(selected);
+  };
+
+  const getCurrentText = (target: AiChange["target"]) => {
+    if (target === "dmBackground") return dmBackground;
+    if (target === "dmFlow") return dmFlow;
+    if (target === "truth") return truth;
+    return "";
+  };
+
+  const applyTextPreview = (current: string, change: AiChange) => {
+    if (change.action === "replace") return String(change.value ?? "");
+    return current.trim().length === 0
+      ? String(change.value ?? "")
+      : `${current.trim()}\n\n${String(change.value ?? "")}`;
+  };
+
+  const toggleSelected = (index: number) => {
+    setAiSelected((prev) =>
+      prev.includes(index) ? prev.filter((item) => item !== index) : [...prev, index]
+    );
+  };
+
+  const selectedCount = aiSelected.length;
 
   const applyDirectorIdea = (idea: DirectorIdea) => {
     if (!title.trim()) setTitle(idea.title);
@@ -652,16 +693,91 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
               )}
               {aiResult.changes.length > 0 && (
                 <div className="grid gap-2">
-                  <p className="text-xs uppercase tracking-[0.2em] text-ink-500">将要改动</p>
-                  <ul className="text-xs text-ink-600">
-                    {aiResult.changes.map((change, index) => (
-                      <li key={`${change.target}-${index}`}>
-                        {change.target} · {change.action}
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs uppercase tracking-[0.2em] text-ink-500">补丁清单</p>
+                    <span className="text-xs text-ink-500">
+                      已选择 {selectedCount} / {aiResult.changes.length}
+                    </span>
+                  </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button type="button" onClick={() => applyAiChanges(aiResult.changes)}>
+                    <Button type="button" variant="outline" onClick={() => setAiSelected(aiResult.changes.map((_, index) => index))}>
+                      全选
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => setAiSelected([])}>
+                      全不选
+                    </Button>
+                  </div>
+                  <div className="grid gap-3">
+                    {aiResult.changes.map((change, index) => {
+                      const isSelected = aiSelected.includes(index);
+                      const targetLabel = change.target === "dmBackground"
+                        ? "DM 背景"
+                        : change.target === "dmFlow"
+                          ? "DM 流程"
+                          : change.target === "truth"
+                            ? "真相"
+                            : change.target === "roles"
+                              ? "角色剧本"
+                              : "线索库";
+
+                      const isTextTarget = ["dmBackground", "dmFlow", "truth"].includes(change.target);
+                      const currentText = isTextTarget ? getCurrentText(change.target) : "";
+                      const nextText = isTextTarget ? applyTextPreview(currentText, change) : "";
+                      const listItems = Array.isArray(change.value) ? change.value : [];
+
+                      return (
+                        <div key={`${change.target}-${index}`} className="rounded-2xl border border-ink-100 bg-white/80 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <label className="flex items-center gap-2 text-xs font-semibold text-ink-700">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleSelected(index)}
+                              />
+                              {targetLabel} · {change.action === "replace" ? "替换" : "追加"}
+                            </label>
+                            <span className="text-xs text-ink-500">补丁 #{index + 1}</span>
+                          </div>
+                          {isTextTarget && (
+                            <div className="mt-3 grid gap-3 md:grid-cols-2">
+                              <div className="rounded-xl border border-ink-100 bg-paper-50/80 p-3">
+                                <p className="text-[10px] uppercase tracking-[0.2em] text-ink-500">原内容</p>
+                                <pre className="mt-2 max-h-40 whitespace-pre-wrap break-words text-xs text-ink-600">
+                                  {currentText || "（空）"}
+                                </pre>
+                              </div>
+                              <div className="rounded-xl border border-ink-100 bg-emerald-50/80 p-3">
+                                <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-600">建议内容</p>
+                                <pre className="mt-2 max-h-40 whitespace-pre-wrap break-words text-xs text-emerald-800">
+                                  {nextText || "（空）"}
+                                </pre>
+                              </div>
+                            </div>
+                          )}
+                          {!isTextTarget && (
+                            <div className="mt-3 rounded-xl border border-ink-100 bg-paper-50/80 p-3">
+                              <p className="text-[10px] uppercase tracking-[0.2em] text-ink-500">
+                                {change.action === "replace" ? "替换为" : "追加"} {listItems.length} 条
+                              </p>
+                              {listItems.length > 0 ? (
+                                <ul className="mt-2 grid gap-1 text-xs text-ink-600">
+                                  {listItems.slice(0, 5).map((item: any, itemIndex: number) => (
+                                    <li key={`${change.target}-${index}-${itemIndex}`}>
+                                      {change.target === "roles" ? (item?.name ?? "未命名角色") : (item?.title ?? "未命名线索")}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="mt-2 text-xs text-ink-500">（空）</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" onClick={applySelectedChanges}>
                       应用改动
                     </Button>
                     <Button type="button" variant="outline" onClick={() => setAiResult(null)}>
