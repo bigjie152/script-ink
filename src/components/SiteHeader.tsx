@@ -35,7 +35,7 @@ export const SiteHeader = () => {
   }, []);
 
   return (
-    <header className="sticky top-0 z-20 border-b border-ink-100/80 bg-paper-50/80 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-ink-200/70 bg-paper-50/90 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-2xl bg-ink-900 text-paper-50 font-display text-lg">
@@ -46,8 +46,11 @@ export const SiteHeader = () => {
             <p className="text-xs text-ink-500">Script Ink</p>
           </div>
         </Link>
-        <nav className="flex items-center gap-3 text-sm">
-          <Link href="/" className="text-ink-600 hover:text-ink-900">
+        <nav className="flex items-center gap-2 text-sm">
+          <Link
+            href="/"
+            className="rounded-full px-3 py-2 text-ink-600 hover:bg-paper-100/80 hover:text-ink-900"
+          >
             社区广场
           </Link>
           {user ? (
@@ -55,10 +58,16 @@ export const SiteHeader = () => {
               <Link href="/scripts/new">
                 <Button>新建剧本</Button>
               </Link>
-              <Link href="/scripts/mine" className="text-ink-600 hover:text-ink-900">
+              <Link
+                href="/scripts/mine"
+                className="rounded-full px-3 py-2 text-ink-600 hover:bg-paper-100/80 hover:text-ink-900"
+              >
                 我的剧本
               </Link>
-              <Link href="/me" className="text-ink-600 hover:text-ink-900">
+              <Link
+                href="/me"
+                className="rounded-full px-3 py-2 text-ink-600 hover:bg-paper-100/80 hover:text-ink-900"
+              >
                 个人中心
               </Link>
               <div className="rounded-full bg-paper-100 px-3 py-1 text-xs text-ink-600">
@@ -68,7 +77,10 @@ export const SiteHeader = () => {
             </>
           ) : (
             <>
-              <Link href="/login" className="text-ink-600 hover:text-ink-900">
+              <Link
+                href="/login"
+                className="rounded-full px-3 py-2 text-ink-600 hover:bg-paper-100/80 hover:text-ink-900"
+              >
                 登录
               </Link>
               <Link href="/register">

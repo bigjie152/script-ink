@@ -29,10 +29,14 @@ export const ScriptCard = ({
   activeQuery,
 }: ScriptCardProps) => {
   return (
-    <Card className="flex h-full flex-col gap-4">
+    <Card className="group relative flex h-full flex-col gap-4 overflow-hidden">
+      <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-accent-500/80 via-accent-300/80 to-transparent" />
       <div className="flex items-start justify-between gap-4">
         <div>
-          <Link href={`/scripts/${id}`} className="font-display text-xl text-ink-900">
+          <Link
+            href={`/scripts/${id}`}
+            className="font-display text-xl text-ink-900 transition group-hover:text-ink-800"
+          >
             {title}
           </Link>
           <p className="mt-2 max-h-16 overflow-hidden text-sm text-ink-600">

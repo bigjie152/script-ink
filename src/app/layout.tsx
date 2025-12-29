@@ -1,5 +1,5 @@
 ﻿import type { Metadata } from "next";
-import { Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
+import { Noto_Sans_SC, ZCOOL_XiaoWei } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -8,10 +8,10 @@ const bodyFont = Noto_Sans_SC({
   subsets: ["latin"],
 });
 
-const displayFont = Noto_Serif_SC({
+const displayFont = ZCOOL_XiaoWei({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
+  weight: ["400"],
 });
 
 export const metadata: Metadata = {

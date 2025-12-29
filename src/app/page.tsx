@@ -32,7 +32,9 @@ export default async function Home({ searchParams }: HomePageProps) {
 
   return (
     <div className="grid gap-10">
-      <section className="grid gap-6 rounded-[32px] border border-ink-100 bg-white/80 p-10">
+      <section className="relative grid gap-6 overflow-hidden rounded-[32px] border border-ink-200/70 bg-paper-50/90 p-10 shadow-[0_30px_80px_-60px_rgba(18,28,30,0.6)]">
+        <div className="absolute -right-16 top-8 h-40 w-40 rounded-full border border-ink-200/70 bg-paper-100/60" />
+        <div className="absolute -left-12 bottom-6 h-28 w-28 rounded-full border border-ink-200/60 bg-paper-100/40" />
         <div className="grid gap-6 md:grid-cols-[1.2fr,0.8fr]">
           <div className="grid gap-4">
             <p className="text-xs uppercase tracking-[0.2em] text-ink-500">
@@ -71,7 +73,7 @@ export default async function Home({ searchParams }: HomePageProps) {
               </Link>
             </div>
           </div>
-          <Card className="grid gap-4 border-ink-100 bg-paper-50/70">
+          <Card className="grid gap-4 border-ink-200/70 bg-paper-100/70">
             <p className="text-xs uppercase tracking-[0.2em] text-ink-500">搜索筛选</p>
             <form action="/" method="GET" className="grid gap-3">
               <input type="hidden" name="sort" value={sort} />

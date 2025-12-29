@@ -1,20 +1,20 @@
 ﻿@import "tailwindcss";
 
 :root {
-  --paper-50: #fdfaf5;
-  --paper-100: #f6efe6;
-  --paper-200: #efe6db;
-  --ink-900: #1f1a14;
-  --ink-800: #2c261f;
-  --ink-700: #3d352c;
-  --ink-600: #5a4f44;
-  --ink-500: #7b6c5f;
-  --ink-400: #a08f7f;
-  --ink-300: #c8bbad;
-  --ink-200: #e1d7cb;
-  --ink-100: #f1e9df;
-  --accent-500: #c45a2d;
-  --accent-300: #e6a47b;
+  --paper-50: #fbf6ed;
+  --paper-100: #f4ecde;
+  --paper-200: #e9dcc7;
+  --ink-900: #1a2628;
+  --ink-800: #243336;
+  --ink-700: #344548;
+  --ink-600: #4c5f63;
+  --ink-500: #6b8084;
+  --ink-400: #8ea2a6;
+  --ink-300: #b9c6c8;
+  --ink-200: #d7dfdf;
+  --ink-100: #eef1ee;
+  --accent-500: #1f6f7c;
+  --accent-300: #f1a067;
 }
 
 @theme inline {
@@ -36,9 +36,41 @@
 }
 
 body {
-  background: radial-gradient(circle at top, #fff7eb 0%, #f6efe6 35%, #efe6db 100%);
+  position: relative;
+  background: linear-gradient(180deg, #fbf4ea 0%, #f3e7d6 40%, #efe0cb 100%);
   color: var(--ink-900);
   font-family: var(--font-body);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(31, 111, 124, 0.15), transparent 45%),
+    radial-gradient(circle at 80% 12%, rgba(241, 160, 103, 0.18), transparent 50%),
+    radial-gradient(circle at 85% 85%, rgba(31, 111, 124, 0.08), transparent 40%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(26, 38, 40, 0.06),
+      rgba(26, 38, 40, 0.06) 1px,
+      transparent 1px,
+      transparent 26px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(26, 38, 40, 0.04),
+      rgba(26, 38, 40, 0.04) 1px,
+      transparent 1px,
+      transparent 26px
+    );
+  opacity: 0.5;
+  z-index: -1;
+}
+
+::selection {
+  background: rgba(31, 111, 124, 0.2);
 }
 
 a {
