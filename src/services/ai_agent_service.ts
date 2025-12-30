@@ -237,7 +237,7 @@ const extractJsonPayload = (value: string) => {
 };
 
 const parseRolesFromText = (value: string): RoleDraft[] => {
-  const blocks = value.split(/\n(?=#+\s)/).map((block) => block.trim()).filter(Boolean);
+  const blocks = value.split(/\n(?=#\s)/).map((block) => block.trim()).filter(Boolean);
   if (blocks.length === 0) {
     return [{ name: "AI 角色", contentMd: value.trim(), taskMd: "" }];
   }
@@ -245,6 +245,14 @@ const parseRolesFromText = (value: string): RoleDraft[] => {
     const lines = block.split(/\r?\n/);
     const heading = lines[0].replace(/^#+\s*/, "").trim() || "未命名角色";
     const rest = lines.slice(1).join("\n").trim();
+    const taskHeadingIndex = rest.search(/(^|\n)##\s*(个人任务|角色任务)/);
+    if (taskHeadingIndex >= 0) {
+      return {
+        name: heading,
+        contentMd: rest.slice(0, taskHeadingIndex).trim(),
+        taskMd: rest.slice(taskHeadingIndex).trim(),
+      };
+    }
     const taskIndex = rest.search(/(角色任务|任务)/);
     if (taskIndex >= 0) {
       return {
@@ -262,18 +270,39 @@ const parseRolesFromText = (value: string): RoleDraft[] => {
 };
 
 const parseCluesFromText = (value: string): ClueDraft[] => {
-  const segments = value.split(/线索名称[:：]/).map((segment) => segment.trim()).filter(Boolean);
-  if (segments.length === 0) {
+  const lines = value.split(/\r?\n/);
+  const blocks: string[][] = [];
+  let current: string[] = [];
+
+  const pushCurrent = () => {
+    if (current.length === 0) return;
+    blocks.push(current);
+    current = [];
+  };
+
+  for (const line of lines) {
+    if (/^\s*[-*\s]*线索名称[:：]/.test(line)) {
+      pushCurrent();
+      current.push(line);
+      continue;
+    }
+    if (current.length > 0) {
+      current.push(line);
+    }
+  }
+  pushCurrent();
+
+  if (blocks.length === 0) {
     return [{ title: "AI 线索", contentMd: value.trim(), triggerMd: "" }];
   }
-  return segments.map((segment, index) => {
-    const lines = segment.split(/\r?\n/).filter(Boolean);
-    const titleLine = lines[0]?.replace(/^[-*\s]*/, "") ?? "";
-    const triggerLine = lines.find((line) => line.includes("触发")) ?? "";
+
+  return blocks.map((block, index) => {
+    const titleLine = block[0]?.replace(/^\s*[-*\s]*线索名称[:：]\s*/, "") ?? "";
+    const triggerLine = block.find((line) => line.includes("投放阶段") || line.includes("触发")) ?? "";
     return {
       title: titleLine || `线索 ${index + 1}`,
-      triggerMd: triggerLine,
-      contentMd: lines.join("\n").trim(),
+      triggerMd: triggerLine.trim(),
+      contentMd: block.join("\n").trim(),
     };
   });
 };
@@ -289,7 +318,7 @@ const splitDmContent = (value: string) => {
     if (/^(#+|\[|【).*(背景|世界观)/.test(trimmed)) {
       mode = "background";
     }
-    if (/^(#+|\[|【).*(流程|轮次|总览)/.test(trimmed)) {
+    if (/^(#+|\[|【).*(流程|轮次|总览|节奏|Beat Map)/.test(trimmed)) {
       mode = "flow";
     }
 
