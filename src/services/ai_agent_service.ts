@@ -292,7 +292,58 @@ const parseCluesFromText = (value: string): ClueDraft[] => {
   }
   pushCurrent();
 
+  const normalizeRow = (row: string) => {
+    const rawCells = row.split("|").map((cell) => cell.trim());
+    const start = rawCells[0] === "" ? 1 : 0;
+    const end = rawCells[rawCells.length - 1] === "" ? rawCells.length - 1 : rawCells.length;
+    return rawCells.slice(start, end);
+  };
+
+  const parseTable = () => {
+    const tableLines = lines.map((line) => line.trim()).filter(Boolean);
+    const headerIndex = tableLines.findIndex(
+      (line) => line.includes("|") && line.includes("线索名称")
+    );
+    if (headerIndex === -1) return [] as ClueDraft[];
+    const headerCells = normalizeRow(tableLines[headerIndex]);
+    if (headerCells.length === 0) return [] as ClueDraft[];
+
+    let rowStart = headerIndex + 1;
+    if (tableLines[rowStart]?.replace(/\|/g, "").trim().match(/^-+$/)) {
+      rowStart += 1;
+    }
+
+    const results: ClueDraft[] = [];
+    for (let i = rowStart; i < tableLines.length; i += 1) {
+      const row = tableLines[i];
+      if (!row.includes("|")) break;
+      const cells = normalizeRow(row);
+      if (cells.length === 0) continue;
+      const cellMap = new Map<string, string>();
+      headerCells.forEach((header, idx) => {
+        cellMap.set(header, cells[idx] ?? "");
+      });
+      const title = cellMap.get("线索名称") ?? cells[0] ?? "";
+      const trigger = cellMap.get("投放阶段")
+        ?? cellMap.get("触发条件")
+        ?? "";
+      const contentParts = [
+        cellMap.get("玩家可见内容"),
+        cellMap.get("DM 解读"),
+      ].filter((part) => part && part.trim().length > 0) as string[];
+      const content = contentParts.length > 0 ? contentParts.join("\n") : cells.join(" | ");
+      results.push({
+        title: title || `线索 ${results.length + 1}`,
+        triggerMd: trigger,
+        contentMd: content.trim(),
+      });
+    }
+    return results;
+  };
+
   if (blocks.length === 0) {
+    const tableClues = parseTable();
+    if (tableClues.length > 0) return tableClues;
     return [{ title: "AI 线索", contentMd: value.trim(), triggerMd: "" }];
   }
 
