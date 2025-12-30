@@ -1,0 +1,195 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+
+import { BubbleMenu } from '@tiptap/react/menus';
+import katexLib from 'katex';
+import { Pencil, Trash2 } from 'lucide-react';
+
+import { ActionButton } from '@editor-v2/components/ActionButton';
+import { Button, Label } from '@editor-v2/components/ui';
+import { Dialog, DialogContent, DialogFooter, DialogTitle, DialogTrigger } from '@editor-v2/components/ui/dialog';
+import { Textarea } from '@editor-v2/components/ui/textarea';
+import { Katex } from '@editor-v2/extensions/Katex';
+import type { IKatexAttrs } from '@editor-v2/extensions/Katex';
+import { useAttributes } from '@editor-v2/hooks/useAttributes';
+import { useLocale } from '@editor-v2/locales';
+import { useEditorInstance } from '@editor-v2/store/editor';
+import { useEditableEditor } from '@editor-v2/store/store';
+import { deleteNode } from '@editor-v2/utils/delete-node';
+import { safeJSONParse } from '@editor-v2/utils/json';
+
+function ModalEditKatex({
+  children,
+  visible,
+  toggleVisible,
+}: any) {
+  const { t } = useLocale();
+
+  const editor = useEditorInstance();
+
+  const attrs = useAttributes<IKatexAttrs>(editor, Katex.name, {
+    text: '',
+    macros: '',
+  });
+
+  const { text, macros } = attrs;
+
+  const [currentValue, setCurrentValue] = useState(decodeURIComponent(text || ''));
+
+  const [currentMacros, setCurrentMacros] = useState(decodeURIComponent(macros || ''));
+
+  useEffect(() => {
+    if (visible) {
+      setCurrentValue(decodeURIComponent(text || ''));
+      setCurrentMacros(decodeURIComponent(macros || ''));
+    }
+  }, [visible]);
+
+  const submit = useCallback(() => {
+    editor.chain().focus().setKatex({ text: encodeURIComponent(currentValue), macros: encodeURIComponent(currentMacros) }).run();
+    setCurrentValue('');
+    setCurrentMacros('');
+    toggleVisible(false);
+  }, [editor, currentValue, currentMacros, toggleVisible]);
+
+  const formatText = useMemo(() => {
+    try {
+      return katexLib.renderToString(currentValue, {
+        macros: safeJSONParse(currentMacros || '')
+      });
+    } catch {
+      return currentValue;
+    }
+  }, [currentValue, currentMacros]);
+
+  const previewContent = useMemo(
+    () => {
+      if (`${currentValue}`.trim()) {
+        return formatText;
+      }
+
+      return null;
+    },
+    [currentValue, formatText],
+  );
+
+  return (
+    <Dialog
+      onOpenChange={toggleVisible}
+      open={visible}
+    >
+      <DialogTrigger
+        asChild
+      >
+        {children}
+      </DialogTrigger>
+
+      <DialogContent className="richtext-z-[99999] !richtext-max-w-[1300px]">
+        <DialogTitle>
+          {t('editor.formula.dialog.text')}
+        </DialogTitle>
+
+        <div
+          style={{ height: '100%', border: '1px solid hsl(var(--border))' }}
+        >
+          <div className="richtext-flex richtext-gap-[10px] richtext-rounded-[10px] richtext-p-[10px]">
+            <div className='richtext-flex-1'>
+
+              <Label className="mb-[6px]">
+                Expression
+              </Label>
+
+              <Textarea
+                autoFocus
+                className="richtext-mb-[10px]"
+                onChange={e => setCurrentValue(e.target.value)}
+                placeholder="Text"
+                required
+                rows={10}
+                value={currentValue}
+                style={{
+                  color: 'hsl(var(--foreground))',
+                }}
+              />
+
+              <Label className="mb-[6px]">
+                Macros
+              </Label>
+
+              <Textarea
+                onChange={e => setCurrentMacros(e.target.value)}
+                placeholder="Macros"
+                rows={10}
+                value={currentMacros}
+                style={{
+                  color: 'hsl(var(--foreground))',
+                }}
+              />
+            </div>
+
+            <div
+              className="richtext-flex richtext-flex-1 richtext-items-center richtext-justify-center richtext-rounded-[10px] richtext-p-[10px]"
+              dangerouslySetInnerHTML={{ __html: previewContent || '' }}
+              style={{ height: '100%', borderWidth: 1, minHeight: 500, background: '#fff' }}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            onClick={submit}
+            type="button"
+          >
+            Save changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function RichTextBubbleKatex() {
+  const editable = useEditableEditor();
+  const editor = useEditorInstance();
+
+  const [visible, toggleVisible] = useState(false);
+
+  const shouldShow = useCallback(() => {
+
+    return editor.isActive(Katex.name);
+  }, [editor]);
+
+  const deleteMe = useCallback(() => deleteNode(Katex.name, editor), [editor]);
+
+  if (!editable) {
+    return <></>;
+  }
+
+  return (
+    <BubbleMenu
+      editor={editor}
+      options={{ placement: 'bottom', offset: 8, flip: true }}
+      pluginKey={'RichTextBubbleKatex'}
+      shouldShow={shouldShow}
+    >
+      <div className="richtext-flex richtext-items-center richtext-gap-2 richtext-rounded-md  !richtext-border !richtext-border-solid !richtext-border-border richtext-bg-popover richtext-p-1 richtext-text-popover-foreground richtext-shadow-md richtext-outline-none">
+        <ModalEditKatex
+          toggleVisible={toggleVisible}
+          visible={visible}
+        >
+          <ActionButton action={() => toggleVisible(!visible)}
+            tooltip="Edit"
+          >
+            <Pencil size={16} />
+          </ActionButton>
+        </ModalEditKatex>
+
+        <ActionButton action={deleteMe}
+          tooltip="Delete"
+        >
+          <Trash2 size={16} />
+        </ActionButton>
+      </div>
+    </BubbleMenu>
+  );
+}
+

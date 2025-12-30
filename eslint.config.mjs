@@ -7,6 +7,6 @@ export default [
   js.configs.recommended,
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
-    ignores: [".next/**", "out/**", "build/**", "next-env.d.ts"],
+    ignores: [".next/**", "out/**", "build/**", "next-env.d.ts", "src/editor-v2/**"],
   },
 ];

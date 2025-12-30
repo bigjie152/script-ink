@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -11,7 +15,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "react-jsx",
+    "jsx": "preserve",
     "incremental": true,
     "plugins": [
       {
@@ -19,7 +23,12 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@editor-v2/*": [
+        "./src/editor-v2/src/*"
+      ]
     }
   },
   "include": [
@@ -30,5 +39,18 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "src/editor-v2/.github/**",
+    "src/editor-v2/docs/**",
+    "src/editor-v2/playground/**",
+    "src/editor-v2/scripts/**",
+    "src/editor-v2/*.js",
+    "src/editor-v2/*.mjs",
+    "src/editor-v2/*.cjs",
+    "src/editor-v2/*.ts",
+    "src/editor-v2/*.cts",
+    "src/editor-v2/*.mts",
+    "src/editor-v2/*.config.*"
+  ]
 }
