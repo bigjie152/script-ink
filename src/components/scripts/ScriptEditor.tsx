@@ -355,12 +355,7 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
             if (payload.aiError) {
               setAiMessage(payload.aiError);
             } else if (payload.aiSource) {
-              const label = payload.aiSource === "google"
-                ? "Google AI Studio"
-                : payload.aiSource === "deepseek"
-                  ? "DeepSeek（已禁用）"
-                  : "占位";
-              setAiMessage(`来源：${label}`);
+              setAiMessage(`来源：${payload.aiSource === "deepseek" ? "DeepSeek" : "占位"}`);
             }
           } catch {
             setAiMessage("AI 输出解析失败。");
@@ -429,18 +424,8 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
       return;
     }
 
-    const data = (await response.json()) as { result?: AiResult; aiError?: string; aiSource?: string };
+    const data = (await response.json()) as { result?: AiResult };
     setAiResult(data.result ?? null);
-    if (data.aiError) {
-      setAiMessage(data.aiError);
-    } else if (data.aiSource) {
-      const label = data.aiSource === "google"
-        ? "Google AI Studio"
-        : data.aiSource === "deepseek"
-          ? "DeepSeek（已禁用）"
-          : "占位";
-      setAiMessage(`来源：${label}`);
-    }
     setAiLoading(false);
   };
 

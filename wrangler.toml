@@ -5,6 +5,9 @@ pages_build_output_dir = ".vercel/output/static"
 
 [vars]
 NODE_ENV = "development"
+AI_PROVIDER = "deepseek"
+AI_MODEL = "deepseek-reasoner"
+AI_BASE_URL = "https://api.deepseek.com/v1"
 
 [[d1_databases]]
 binding = "DB"

@@ -11,11 +11,7 @@ import {
   type RoleDraft,
   type ClueDraft,
 } from "@/services/ai_agent_service";
-import {
-  getAiConfig,
-  requestGoogle,
-  requestGoogleStream,
-} from "@/services/ai_client";
+import { getAiConfig, requestDeepSeek, requestDeepSeekStream } from "@/services/ai_client";
 import { getSystemPrompt } from "@/services/ai_prompt_templates";
 import { getTruthLock } from "@/services/truth_lock_controller";
 
@@ -34,16 +30,6 @@ type AiRequestBody = {
     roles?: RoleDraft[];
     clues?: ClueDraft[];
   };
-};
-
-const buildEmptyGoogleMessage = (blockReason?: string, finishReason?: string) => {
-  if (blockReason) {
-    return `Google 返回空内容，可能被安全策略拦截（blockReason=${blockReason}）。`;
-  }
-  if (finishReason) {
-    return `Google 返回空内容（finishReason=${finishReason}）。`;
-  }
-  return "Google 返回空内容，请检查 API Key、模型名或提示词。";
 };
 
 export async function POST(request: Request) {
@@ -129,26 +115,6 @@ ${body?.current
   let aiError = "";
   if (useStream) {
     const encoder = new TextEncoder();
-    type GoogleStreamPayload = {
-      candidates?: Array<{
-        content?: { parts?: Array<{ text?: string }> };
-        finishReason?: string;
-      }>;
-      promptFeedback?: { blockReason?: string };
-    };
-    type DeepSeekStreamPayload = {
-      choices?: Array<{ delta?: { content?: string } }>;
-    };
-    const getStreamDelta = (provider: "deepseek" | "google", payload: unknown) => {
-      if (!payload || typeof payload !== "object") return "";
-      if (provider === "google") {
-        const data = payload as GoogleStreamPayload;
-        const parts = data.candidates?.[0]?.content?.parts ?? [];
-        return parts.map((part) => part.text ?? "").join("");
-      }
-      const data = payload as DeepSeekStreamPayload;
-      return data.choices?.[0]?.delta?.content ?? "";
-    };
     const stream = new ReadableStream({
       async start(controller) {
         if (!aiConfig) {
@@ -157,15 +123,9 @@ ${body?.current
           controller.close();
           return;
         }
-        if (aiConfig.provider === "deepseek") {
-          const payload = JSON.stringify({ message: "DeepSeek 已禁用，请切换到 Google AI Studio。" });
-          controller.enqueue(encoder.encode(`event: error\ndata: ${payload}\n\n`));
-          controller.close();
-          return;
-        }
 
         try {
-          const bodyStream = await requestGoogleStream(aiConfig, [
+          const bodyStream = await requestDeepSeekStream(aiConfig, [
             { role: "system", content: systemPrompt },
             { role: "user", content: contextMessage },
             { role: "user", content: instruction || "（无额外指令）" },
@@ -174,8 +134,6 @@ ${body?.current
           const decoder = new TextDecoder();
           let buffer = "";
           let fullText = "";
-          let blockReason = "";
-          let finishReason = "";
 
           while (true) {
             const { value, done } = await reader.read();
@@ -192,20 +150,13 @@ ${body?.current
               const data = dataLines.join("");
               if (!data) continue;
               if (data === "[DONE]") continue;
-              let payload: GoogleStreamPayload;
+              let payload: { choices?: Array<{ delta?: { content?: string } }> };
               try {
-                payload = JSON.parse(data) as GoogleStreamPayload;
+                payload = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }> };
               } catch {
                 continue;
               }
-              if (payload.promptFeedback?.blockReason) {
-                blockReason = payload.promptFeedback.blockReason;
-              }
-              if (payload.candidates?.[0]?.finishReason) {
-                finishReason = payload.candidates[0].finishReason ?? "";
-              }
-
-              const delta = getStreamDelta(aiConfig.provider, payload);
+              const delta = payload?.choices?.[0]?.delta?.content ?? "";
               if (delta) {
                 fullText += delta;
                 controller.enqueue(
@@ -215,11 +166,7 @@ ${body?.current
             }
           }
 
-                    const isEmpty = fullText.trim().length === 0
-            ? true
-            : false;
-
-          const finalResult = !isEmpty
+          const finalResult = fullText.trim().length > 0
             ? buildResultFromText({ scope, action, text: fullText })
             : buildMockResult({
                 scope,
@@ -228,26 +175,19 @@ ${body?.current
                 context: contextPool,
                 current: body?.current,
               });
-          const aiErrorMessage = isEmpty
-            ? buildEmptyGoogleMessage(blockReason || undefined, finishReason || undefined)
-            : "";
 
           controller.enqueue(
             encoder.encode(
-              `event: done
-data: ${JSON.stringify({
+              `event: done\ndata: ${JSON.stringify({
                 result: finalResult,
                 aiText: fullText,
-                aiSource: isEmpty ? "mock" : "google",
-                aiError: aiErrorMessage,
-              })}
-
-`
+                aiSource: "deepseek",
+              })}\n\n`
             )
           );
           controller.close();
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Google AI Studio 调用失败";
+          const message = error instanceof Error ? error.message : "DeepSeek 调用失败";
           controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ message })}\n\n`));
           controller.close();
         }
@@ -263,38 +203,13 @@ data: ${JSON.stringify({
     });
   }
   if (aiConfig) {
-    if (aiConfig.provider === "deepseek") {
-      aiError = "DeepSeek 已禁用，请切换到 Google AI Studio。";
-      result = buildMockResult({
-        scope,
-        action,
-        mode,
-        context: contextPool,
-        current: body?.current,
-      });
-    } else {
-      try {
-        const googleResult = await requestGoogle(aiConfig, [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: contextMessage },
-          { role: "user", content: instruction || "（无额外指令）" },
-        ]);
-        aiText = googleResult.text;
-        if (!aiText.trim()) {
-          aiError = buildEmptyGoogleMessage(googleResult.blockReason, googleResult.finishReason);
-          result = buildMockResult({
-            scope,
-            action,
-            mode,
-            context: contextPool,
-            current: body?.current,
-          });
-        } else {
-          result = buildResultFromText({ scope, action, text: aiText });
-          aiSource = "google";
-        }
-      } catch (error) {
-        aiError = error instanceof Error ? error.message : "Google AI Studio 调用失败";
+    try {
+      aiText = await requestDeepSeek(aiConfig, [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: contextMessage },
+        { role: "user", content: instruction || "（无额外指令）" },
+      ]);
+      if (!aiText.trim()) {
         result = buildMockResult({
           scope,
           action,
@@ -302,7 +217,19 @@ data: ${JSON.stringify({
           context: contextPool,
           current: body?.current,
         });
+      } else {
+        result = buildResultFromText({ scope, action, text: aiText });
+        aiSource = "deepseek";
       }
+    } catch (error) {
+      aiError = error instanceof Error ? error.message : "DeepSeek 调用失败";
+      result = buildMockResult({
+        scope,
+        action,
+        mode,
+        context: contextPool,
+        current: body?.current,
+      });
     }
   } else {
     result = buildMockResult({
