@@ -38,7 +38,7 @@ type AiRequestBody = {
 
 const buildEmptyGoogleMessage = (blockReason?: string, finishReason?: string) => {
   if (blockReason) {
-    return `Google ????????????????blockReason=${blockReason}??`;
+    return `Google ??????blockReason=${blockReason}??`;
   }
   if (finishReason) {
     return `Google ??????finishReason=${finishReason}??`;
