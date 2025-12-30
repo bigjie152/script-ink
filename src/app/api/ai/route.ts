@@ -192,9 +192,9 @@ ${body?.current
               const data = dataLines.join("");
               if (!data) continue;
               if (data === "[DONE]") continue;
-              let payload: { choices?: Array<{ delta?: { content?: string } }> };
+              let payload: GoogleStreamPayload;
               try {
-                payload = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }> };
+                payload = JSON.parse(data) as GoogleStreamPayload;
               } catch {
                 continue;
               }
