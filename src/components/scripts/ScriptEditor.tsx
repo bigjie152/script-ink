@@ -429,8 +429,18 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
       return;
     }
 
-    const data = (await response.json()) as { result?: AiResult };
+    const data = (await response.json()) as { result?: AiResult; aiError?: string; aiSource?: string };
     setAiResult(data.result ?? null);
+    if (data.aiError) {
+      setAiMessage(data.aiError);
+    } else if (data.aiSource) {
+      const label = data.aiSource === "google"
+        ? "Google AI Studio"
+        : data.aiSource === "deepseek"
+          ? "DeepSeek（已禁用）"
+          : "占位";
+      setAiMessage(`来源：${label}`);
+    }
     setAiLoading(false);
   };
 

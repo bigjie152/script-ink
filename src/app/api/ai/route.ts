@@ -36,6 +36,16 @@ type AiRequestBody = {
   };
 };
 
+const buildEmptyGoogleMessage = (blockReason?: string, finishReason?: string) => {
+  if (blockReason) {
+    return `Google ????????????????blockReason=${blockReason}??`;
+  }
+  if (finishReason) {
+    return `Google ??????finishReason=${finishReason}??`;
+  }
+  return "Google ????????? API Key?????????";
+};
+
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
@@ -120,7 +130,11 @@ ${body?.current
   if (useStream) {
     const encoder = new TextEncoder();
     type GoogleStreamPayload = {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+        finishReason?: string;
+      }>;
+      promptFeedback?: { blockReason?: string };
     };
     type DeepSeekStreamPayload = {
       choices?: Array<{ delta?: { content?: string } }>;
@@ -160,6 +174,8 @@ ${body?.current
           const decoder = new TextDecoder();
           let buffer = "";
           let fullText = "";
+          let blockReason = "";
+          let finishReason = "";
 
           while (true) {
             const { value, done } = await reader.read();
@@ -182,6 +198,13 @@ ${body?.current
               } catch {
                 continue;
               }
+              if (payload.promptFeedback?.blockReason) {
+                blockReason = payload.promptFeedback.blockReason;
+              }
+              if (payload.candidates?.[0]?.finishReason) {
+                finishReason = payload.candidates[0].finishReason ?? "";
+              }
+
               const delta = getStreamDelta(aiConfig.provider, payload);
               if (delta) {
                 fullText += delta;
@@ -192,7 +215,11 @@ ${body?.current
             }
           }
 
-          const finalResult = fullText.trim().length > 0
+                    const isEmpty = fullText.trim().length === 0
+            ? true
+            : false;
+
+          const finalResult = !isEmpty
             ? buildResultFromText({ scope, action, text: fullText })
             : buildMockResult({
                 scope,
@@ -201,14 +228,21 @@ ${body?.current
                 context: contextPool,
                 current: body?.current,
               });
+          const aiErrorMessage = isEmpty
+            ? buildEmptyGoogleMessage(blockReason || undefined, finishReason || undefined)
+            : "";
 
           controller.enqueue(
             encoder.encode(
-              `event: done\ndata: ${JSON.stringify({
+              `event: done
+data: ${JSON.stringify({
                 result: finalResult,
                 aiText: fullText,
-                aiSource: "google",
-              })}\n\n`
+                aiSource: isEmpty ? "mock" : "google",
+                aiError: aiErrorMessage,
+              })}
+
+`
             )
           );
           controller.close();
@@ -240,12 +274,14 @@ ${body?.current
       });
     } else {
       try {
-        aiText = await requestGoogle(aiConfig, [
+        const googleResult = await requestGoogle(aiConfig, [
           { role: "system", content: systemPrompt },
           { role: "user", content: contextMessage },
           { role: "user", content: instruction || "（无额外指令）" },
         ]);
+        aiText = googleResult.text;
         if (!aiText.trim()) {
+          aiError = buildEmptyGoogleMessage(googleResult.blockReason, googleResult.finishReason);
           result = buildMockResult({
             scope,
             action,

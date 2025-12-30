@@ -12,6 +12,12 @@ export type AiConfig = {
   model: string;
 };
 
+export type GoogleAiResult = {
+  text: string;
+  blockReason?: string;
+  finishReason?: string;
+};
+
 const readEnv = (key: string) => {
   const context = getRequestContext();
   const env = (context?.env ?? {}) as Record<string, string | undefined>;
@@ -19,7 +25,7 @@ const readEnv = (key: string) => {
 };
 
 export const getAiConfig = (): AiConfig | null => {
-  // DeepSeek code保留但禁用，仅使用 Google AI Studio。
+  // DeepSeek code is kept but disabled; only Google AI Studio is used.
   const apiKey = readEnv("AI_API_KEY") ?? readEnv("GEMINI_API_KEY") ?? readEnv("GOOGLE_API_KEY") ?? "";
   if (!apiKey) return null;
   const baseUrlCandidate = readEnv("GEMINI_BASE_URL") ?? readEnv("AI_BASE_URL") ?? "";
@@ -94,7 +100,7 @@ const splitMessages = (messages: AiMessage[]) => {
   return { systemText, userMessages };
 };
 
-export const requestGoogle = async (config: AiConfig, messages: AiMessage[]) => {
+export const requestGoogle = async (config: AiConfig, messages: AiMessage[]): Promise<GoogleAiResult> => {
   const { systemText, userMessages } = splitMessages(messages);
   const contents = userMessages.map((message) => ({
     role: "user",
@@ -120,10 +126,15 @@ export const requestGoogle = async (config: AiConfig, messages: AiMessage[]) => 
   }
 
   const data = (await response.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }>;
+    promptFeedback?: { blockReason?: string };
   };
   const parts = data.candidates?.[0]?.content?.parts ?? [];
-  return parts.map((part) => part.text ?? "").join("");
+  return {
+    text: parts.map((part) => part.text ?? "").join(""),
+    blockReason: data.promptFeedback?.blockReason,
+    finishReason: data.candidates?.[0]?.finishReason,
+  };
 };
 
 export const requestGoogleStream = async (config: AiConfig, messages: AiMessage[]) => {
