@@ -38,12 +38,12 @@ type AiRequestBody = {
 
 const buildEmptyGoogleMessage = (blockReason?: string, finishReason?: string) => {
   if (blockReason) {
-    return `Google ??????blockReason=${blockReason}??`;
+    return `Google 返回空内容，可能被安全策略拦截（blockReason=${blockReason}）。`;
   }
   if (finishReason) {
-    return `Google ??????finishReason=${finishReason}??`;
+    return `Google 返回空内容（finishReason=${finishReason}）。`;
   }
-  return "Google ????????? API Key?????????";
+  return "Google 返回空内容，请检查 API Key、模型名或提示词。";
 };
 
 export async function POST(request: Request) {
