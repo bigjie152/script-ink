@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { scriptFavorites, scripts } from "@/lib/db/schema";
@@ -34,7 +34,11 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   const db = getDb();
-  const scriptRows = await db.select().from(scripts).where(eq(scripts.id, id)).limit(1);
+  const scriptRows = await db
+    .select()
+    .from(scripts)
+    .where(and(eq(scripts.id, id), isNull(scripts.deletedAt)))
+    .limit(1);
   if (scriptRows.length === 0) {
     return NextResponse.json({ message: "未找到剧本" }, { status: 404 });
   }

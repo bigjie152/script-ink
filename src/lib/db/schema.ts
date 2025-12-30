@@ -30,6 +30,7 @@ export const scripts = sqliteTable("scripts", {
   allowFork: integer("allow_fork").notNull(),
   rootId: text("root_id"),
   parentId: text("parent_id"),
+  deletedAt: integer("deleted_at"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 }, (table) => ({
@@ -184,4 +185,13 @@ export const scriptMergeRequests = sqliteTable("script_merge_requests", {
   targetIndex: index("script_merge_requests_target_idx").on(table.targetScriptId),
   authorIndex: index("script_merge_requests_author_idx").on(table.authorId),
   statusIndex: index("script_merge_requests_status_idx").on(table.status),
+}));
+
+export const scriptArchives = sqliteTable("script_archives", {
+  id: text("id").primaryKey(),
+  scriptId: text("script_id").notNull(),
+  payload: text("payload").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => ({
+  scriptIndex: index("script_archives_script_id_idx").on(table.scriptId),
 }));

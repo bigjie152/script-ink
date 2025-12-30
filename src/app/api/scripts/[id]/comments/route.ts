@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { commentLikes, comments, scripts, users } from "@/lib/db/schema";
@@ -15,7 +15,11 @@ const COMMENT_MAX_LENGTH = 1000;
 export async function GET(request: Request, { params }: RouteContext) {
   const { id } = await params;
   const db = getDb();
-  const scriptRows = await db.select().from(scripts).where(eq(scripts.id, id)).limit(1);
+  const scriptRows = await db
+    .select()
+    .from(scripts)
+    .where(and(eq(scripts.id, id), isNull(scripts.deletedAt)))
+    .limit(1);
   if (scriptRows.length === 0) {
     return NextResponse.json({ message: "未找到剧本" }, { status: 404 });
   }
@@ -109,7 +113,11 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   const db = getDb();
-  const scriptRows = await db.select().from(scripts).where(eq(scripts.id, id)).limit(1);
+  const scriptRows = await db
+    .select()
+    .from(scripts)
+    .where(and(eq(scripts.id, id), isNull(scripts.deletedAt)))
+    .limit(1);
   if (scriptRows.length === 0) {
     return NextResponse.json({ message: "未找到剧本" }, { status: 404 });
   }

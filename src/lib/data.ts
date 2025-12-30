@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, like, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, like, ne, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import {
   clues,
@@ -72,13 +72,14 @@ export const getScriptDetail = async (scriptId: string) => {
       allowFork: scripts.allowFork,
       rootId: scripts.rootId,
       parentId: scripts.parentId,
+      deletedAt: scripts.deletedAt,
       createdAt: scripts.createdAt,
       updatedAt: scripts.updatedAt,
       authorName: users.displayName,
     })
     .from(scripts)
     .leftJoin(users, eq(users.id, scripts.authorId))
-    .where(eq(scripts.id, scriptId))
+    .where(and(eq(scripts.id, scriptId), isNull(scripts.deletedAt)))
     .limit(1);
 
   const script = scriptRows[0];
@@ -195,7 +196,7 @@ export const getCommunityScripts = async ({ sort, query, tag }: CommunityFilters
     }
   }
 
-  const conditions = [eq(scripts.isPublic, 1)];
+  const conditions = [eq(scripts.isPublic, 1), isNull(scripts.deletedAt)];
   if (query) {
     const keywordFilter = or(
       like(scripts.title, `%${query}%`),
@@ -245,7 +246,7 @@ export const getScriptForkChain = async (scriptId: string) => {
     })
     .from(scripts)
     .leftJoin(users, eq(users.id, scripts.authorId))
-    .where(eq(scripts.id, scriptId));
+    .where(and(eq(scripts.id, scriptId), isNull(scripts.deletedAt)));
 
   return rows[0] ?? null;
 };
@@ -255,7 +256,7 @@ export const getAuthorScripts = async (authorId: string) => {
   return db
     .select()
     .from(scripts)
-    .where(eq(scripts.authorId, authorId));
+    .where(and(eq(scripts.authorId, authorId), isNull(scripts.deletedAt)));
 };
 
 export const getScriptCollections = async (scriptId: string, userId?: string) => {
@@ -347,7 +348,11 @@ export const getFavoriteScripts = async (userId: string, folder?: string) => {
     .from(scriptFavorites)
     .innerJoin(scripts, eq(scripts.id, scriptFavorites.scriptId))
     .leftJoin(users, eq(users.id, scripts.authorId))
-    .where(and(eq(scriptFavorites.userId, userId), eq(scriptFavorites.folder, resolvedFolder)))
+    .where(and(
+      eq(scriptFavorites.userId, userId),
+      eq(scriptFavorites.folder, resolvedFolder),
+      isNull(scripts.deletedAt)
+    ))
     .orderBy(desc(scriptFavorites.createdAt));
 
   const merged = await buildScriptCards(rows);
@@ -376,7 +381,7 @@ export const getLikedScripts = async (userId: string) => {
     .from(scriptLikes)
     .innerJoin(scripts, eq(scripts.id, scriptLikes.scriptId))
     .leftJoin(users, eq(users.id, scripts.authorId))
-    .where(eq(scriptLikes.userId, userId))
+    .where(and(eq(scriptLikes.userId, userId), isNull(scripts.deletedAt)))
     .orderBy(desc(scriptLikes.createdAt));
 
   const merged = await buildScriptCards(rows);
@@ -402,7 +407,7 @@ export const getUserComments = async (userId: string) => {
     .from(comments)
     .innerJoin(scripts, eq(scripts.id, comments.scriptId))
     .leftJoin(commentLikes, eq(commentLikes.commentId, comments.id))
-    .where(eq(comments.authorId, userId))
+    .where(and(eq(comments.authorId, userId), eq(comments.isDeleted, 0)))
     .groupBy(comments.id)
     .orderBy(desc(comments.createdAt));
 
@@ -581,7 +586,7 @@ export const getMergeCandidates = async (userId: string, targetScriptId: string)
   const targetRows = await db
     .select({ id: scripts.id, rootId: scripts.rootId })
     .from(scripts)
-    .where(eq(scripts.id, targetScriptId))
+    .where(and(eq(scripts.id, targetScriptId), isNull(scripts.deletedAt)))
     .limit(1);
   if (targetRows.length === 0) return [];
 
@@ -599,7 +604,8 @@ export const getMergeCandidates = async (userId: string, targetScriptId: string)
           eq(scripts.rootId, resolvedRootId),
           eq(scripts.id, resolvedRootId)
         ),
-        ne(scripts.id, targetScriptId)
+        ne(scripts.id, targetScriptId),
+        isNull(scripts.deletedAt)
       )
     )
     .orderBy(desc(scripts.createdAt));

@@ -17,7 +17,15 @@ const tabs = [
 type TabId = (typeof tabs)[number]["id"];
 
 type AiAction = "generate" | "improve" | "audit" | "director";
-type AiMode = "light" | "standard";
+type AiMode = "light" | "standard" | "creative";
+type AiGenre =
+  | "none"
+  | "detective"
+  | "story"
+  | "emotion"
+  | "horror"
+  | "mechanism"
+  | "comedy";
 type AiChange = {
   target: "dmBackground" | "dmFlow" | "truth" | "roles" | "clues";
   action: "replace" | "append";
@@ -87,6 +95,7 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
   const [message, setMessage] = useState<string | null>(null);
   const [aiAction, setAiAction] = useState<AiAction>("generate");
   const [aiMode, setAiMode] = useState<AiMode>("light");
+  const [aiGenre, setAiGenre] = useState<AiGenre>("none");
   const [aiInstruction, setAiInstruction] = useState("");
   const [aiResult, setAiResult] = useState<AiResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -97,6 +106,7 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
   const [aiSelected, setAiSelected] = useState<number[]>([]);
   const [truthLocked, setTruthLocked] = useState(false);
   const [lockMessage, setLockMessage] = useState<string | null>(null);
+  const creativeAllowed = activeTab === "dm" || activeTab === "truth" || aiAction === "director";
 
   const addRole = () => {
     setRoleItems((prev) => [
@@ -153,6 +163,12 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
     }
     setAiSelected(aiResult.changes.map((_, index) => index));
   }, [aiResult]);
+
+  useEffect(() => {
+    if (!creativeAllowed && aiMode === "creative") {
+      setAiMode("standard");
+    }
+  }, [creativeAllowed, aiMode]);
 
   const handleTruthLock = async () => {
     setLockMessage(null);
@@ -388,6 +404,7 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
       scope,
       action: aiAction,
       mode: aiMode,
+      genre: aiGenre,
       instruction: aiInstruction,
       current: {
         dmBackground,
@@ -734,6 +751,7 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
               <Select value={aiMode} onChange={(event) => setAiMode(event.target.value as AiMode)}>
                 <option value="light">轻量</option>
                 <option value="standard">标准</option>
+                <option value="creative" disabled={!creativeAllowed}>创意</option>
               </Select>
             </label>
             <label className="text-xs text-ink-600">
@@ -743,6 +761,20 @@ export const ScriptEditor = ({ script, sections, roles, clues, tags }: ScriptEdi
                 onChange={(event) => setAiInstruction(event.target.value)}
                 placeholder="如：强调诡计、控制字数等"
               />
+            </label>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="text-xs text-ink-600">
+              类型规则包
+              <Select value={aiGenre} onChange={(event) => setAiGenre(event.target.value as AiGenre)}>
+                <option value="none">不选择</option>
+                <option value="detective">硬核推理本</option>
+                <option value="story">还原叙事本</option>
+                <option value="emotion">情感沉浸本</option>
+                <option value="horror">恐怖惊悚本</option>
+                <option value="mechanism">机制阵营本</option>
+                <option value="comedy">欢乐演绎本</option>
+              </Select>
             </label>
           </div>
 

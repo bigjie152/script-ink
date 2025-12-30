@@ -1,4 +1,4 @@
-import type { AiAction, AiScope } from "@/services/ai_agent_service";
+import type { AiAction, AiMode, AiScope, AiGenre } from "@/services/ai_agent_service";
 
 const BASE_PROMPT = `你是“Script Ink 剧本杀创作与编辑助手”。你的任务是在保持跨板块一致性与可执行性的前提下，生成或改写剧本内容。
 
@@ -125,12 +125,52 @@ const DIRECTOR_PROMPT = `【模式：导演模式】
 const GLOBAL_PROMPT = `【当前板块：全局】
 当用户要求跨板块输出时，请先确认真相骨架与实体表，再输出结构化内容。`;
 
-export const getSystemPrompt = ({ scope, action }: { scope: AiScope; action: AiAction }) => {
+const MODE_CONTRACTS: Record<AiMode, string> = {
+  light: "【MODE_CONTRACT: LITE】",
+  standard: "【MODE_CONTRACT: STANDARD】",
+  creative: "【MODE_CONTRACT: CREATIVE】",
+};
+
+const CREATIVE_EVAL_BLOCK = `【创意评估块】`;
+
+const GENRE_RULESETS: Record<AiGenre, string> = {
+  none: "",
+  detective: `【GENRE_RULESET: 硬核推理本 / Detective】
+- KPI：公平性、证据闭环、反常识诡计`,
+  story: `【GENRE_RULESET: 还原叙事本 / Story】
+- KPI：真相层层揭开、群像关系、回收震撼`,
+  emotion: `【GENRE_RULESET: 情感沉浸本 / Emotion】
+- KPI：关系张力、选择痛感、峰终体验、共鸣`,
+  horror: `【GENRE_RULESET: 恐怖惊悚本 / Horror】
+- KPI：压迫节奏、恐惧机制、感官场景、DM 控场`,
+  mechanism: `【GENRE_RULESET: 机制阵营本 / Mechanism/Camp】
+- KPI：规则博弈、阵营对抗、资源/信息的交易与反制`,
+  comedy: `【GENRE_RULESET: 欢乐演绎本 / Comedy/Performance】
+- KPI：人设冲突、包袱密度、表演点、可传播梗`,
+};
+
+const getModeContract = ({ mode, scope }: { mode: AiMode; scope: AiScope }) => {
+  const contract = MODE_CONTRACTS[mode];
+  if (mode === "creative" && (scope === "dm" || scope === "truth" || scope === "global")) {
+    return `${contract}\n${CREATIVE_EVAL_BLOCK}`;
+  }
+  return contract;
+};
+
+export const getSystemPrompt = ({
+  scope,
+  action,
+  mode,
+}: {
+  scope: AiScope;
+  action: AiAction;
+  mode: AiMode;
+}) => {
   if (action === "audit") {
-    return `${BASE_PROMPT}\n\n${FORMAT_RULES}\n\n${AUDIT_PROMPT}`;
+    return `${BASE_PROMPT}\n\n${FORMAT_RULES}\n\n${getModeContract({ mode, scope })}\n\n${AUDIT_PROMPT}`;
   }
   if (action === "director") {
-    return `${BASE_PROMPT}\n\n${FORMAT_RULES}\n\n${DIRECTOR_PROMPT}`;
+    return `${BASE_PROMPT}\n\n${FORMAT_RULES}\n\n${getModeContract({ mode, scope })}\n\n${DIRECTOR_PROMPT}`;
   }
 
   const scoped = scope === "truth"
@@ -143,5 +183,21 @@ export const getSystemPrompt = ({ scope, action }: { scope: AiScope; action: AiA
           ? DM_PROMPT
           : GLOBAL_PROMPT;
 
-  return `${BASE_PROMPT}\n\n${FORMAT_RULES}\n\n${scoped}`;
+  return `${BASE_PROMPT}\n\n${FORMAT_RULES}\n\n${getModeContract({ mode, scope })}\n\n${scoped}`;
+};
+
+export const getSystemPrompts = ({
+  scope,
+  action,
+  mode,
+  genre,
+}: {
+  scope: AiScope;
+  action: AiAction;
+  mode: AiMode;
+  genre: AiGenre;
+}) => {
+  const basePrompt = getSystemPrompt({ scope, action, mode });
+  const genrePrompt = GENRE_RULESETS[genre];
+  return genrePrompt ? [basePrompt, genrePrompt] : [basePrompt];
 };

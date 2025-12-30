@@ -6,13 +6,14 @@ import {
   buildResultFromText,
   getSectorRules,
   type AiAction,
+  type AiGenre,
   type AiMode,
   type AiScope,
   type RoleDraft,
   type ClueDraft,
 } from "@/services/ai_agent_service";
 import { getAiConfig, requestDeepSeek, requestDeepSeekStream } from "@/services/ai_client";
-import { getSystemPrompt } from "@/services/ai_prompt_templates";
+import { getSystemPrompt, getSystemPrompts } from "@/services/ai_prompt_templates";
 import { getTruthLock } from "@/services/truth_lock_controller";
 
 export const runtime = "edge";
@@ -22,6 +23,7 @@ type AiRequestBody = {
   scope?: AiScope;
   action?: AiAction;
   mode?: AiMode;
+  genre?: AiGenre;
   instruction?: string;
   current?: {
     dmBackground?: string;
@@ -43,10 +45,15 @@ export async function POST(request: Request) {
   const action = body?.action ?? "generate";
   const scope = action === "director" ? "global" : (body?.scope ?? "global");
   const mode = body?.mode ?? "light";
+  const genre = body?.genre ?? "none";
   const instruction = body?.instruction ?? "";
 
   if (!scriptId) {
     return NextResponse.json({ message: "缺少 scriptId。" }, { status: 400 });
+  }
+
+  if (mode === "creative" && !["dm", "truth", "global"].includes(scope)) {
+    return NextResponse.json({ message: "创意模式暂仅支持 DM / 真相 / 全局。" }, { status: 400 });
   }
 
   const detail = await getScriptDetail(scriptId);
@@ -85,7 +92,8 @@ export async function POST(request: Request) {
     tags: detail.tags,
   };
 
-  const systemPrompt = getSystemPrompt({ scope, action });
+  const systemPrompt = getSystemPrompt({ scope, action, mode });
+  const systemPrompts = getSystemPrompts({ scope, action, mode, genre });
   const contextMessage = `【GLOBAL_CANONICAL_STATE】
 ${JSON.stringify({
   truth_lock: contextPool.truthLock || undefined,
@@ -104,6 +112,8 @@ ${body?.current
 【用户希望输出到哪里】
 - 板块：${scope}
 - 操作：${action}
+- 模式：${mode}
+- 题材：${genre}
 `;
 
   const url = new URL(request.url);
@@ -126,7 +136,7 @@ ${body?.current
 
         try {
           const bodyStream = await requestDeepSeekStream(aiConfig, [
-            { role: "system", content: systemPrompt },
+            ...systemPrompts.map((content) => ({ role: "system" as const, content })),
             { role: "user", content: contextMessage },
             { role: "user", content: instruction || "（无额外指令）" },
           ]);
@@ -205,7 +215,7 @@ ${body?.current
   if (aiConfig) {
     try {
       aiText = await requestDeepSeek(aiConfig, [
-        { role: "system", content: systemPrompt },
+        ...systemPrompts.map((content) => ({ role: "system" as const, content })),
         { role: "user", content: contextMessage },
         { role: "user", content: instruction || "（无额外指令）" },
       ]);
@@ -250,6 +260,7 @@ ${body?.current
       User_Instruction: instruction,
     },
     systemPrompt,
+    systemPrompts,
     aiText,
     aiSource,
     aiError,

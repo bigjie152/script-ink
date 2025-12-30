@@ -1,6 +1,15 @@
 export type AiScope = "dm" | "roles" | "clues" | "truth" | "global";
 export type AiAction = "generate" | "improve" | "audit" | "director";
-export type AiMode = "light" | "standard";
+export type AiMode = "light" | "standard" | "creative";
+
+export type AiGenre =
+  | "none"
+  | "detective"
+  | "story"
+  | "emotion"
+  | "horror"
+  | "mechanism"
+  | "comedy";
 
 export type RoleDraft = {
   name: string;
@@ -440,7 +449,7 @@ export const buildMockResult = ({
   }
 
   const changes: AiChange[] = [];
-  const modeLabel = mode === "standard" ? "标准" : "轻量";
+  const modeLabel = mode === "creative" ? "创意" : mode === "standard" ? "标准" : "轻量";
 
   if (scope === "truth") {
     const nextTruth = action === "generate"

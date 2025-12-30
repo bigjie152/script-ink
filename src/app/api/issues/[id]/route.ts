@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { scriptIssues, scripts } from "@/lib/db/schema";
@@ -43,7 +43,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
   const scriptRows = await db
     .select({ authorId: scripts.authorId })
     .from(scripts)
-    .where(eq(scripts.id, rows[0].scriptId))
+    .where(and(eq(scripts.id, rows[0].scriptId), isNull(scripts.deletedAt)))
     .limit(1);
 
   if (scriptRows.length === 0) {

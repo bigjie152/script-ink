@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { scriptSections, scripts } from "@/lib/db/schema";
@@ -16,7 +16,11 @@ const ensureOwner = async (scriptId: string, userId: string) => {
   const rows = await db
     .select()
     .from(scripts)
-    .where(and(eq(scripts.id, scriptId), eq(scripts.authorId, userId)))
+    .where(and(
+      eq(scripts.id, scriptId),
+      eq(scripts.authorId, userId),
+      isNull(scripts.deletedAt)
+    ))
     .limit(1);
   return rows[0];
 };
