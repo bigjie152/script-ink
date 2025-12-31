@@ -3,12 +3,12 @@ import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { MarkdownBlock } from "@/components/scripts/MarkdownBlock";
 import { PublishButton } from "@/components/scripts/PublishButton";
 import { getCurrentUser } from "@/lib/auth";
 import { getScriptDetail } from "@/lib/data";
-import { linkifyMentions } from "@/lib/markdown";
 import { formatDate } from "@/lib/utils";
+import { ensureScriptEntities } from "@/services/script_entity_service";
+import { renderDocText } from "@/lib/tiptap_text";
 
 export const runtime = "edge";
 
@@ -31,19 +31,19 @@ export default async function PreviewScriptPage({ params }: PreviewPageProps) {
   if (detail.script.authorId !== user.id) {
     redirect(`/scripts/${id}`);
   }
-
-  const dmBackground = detail.sections.find((section) => section.sectionType === "dm_background")?.contentMd ?? "";
-  const dmFlow = detail.sections.find((section) => section.sectionType === "dm_flow")?.contentMd
-    ?? detail.sections.find((section) => section.sectionType === "dm")?.contentMd
-    ?? "";
-  const truth = detail.sections.find((section) => section.sectionType === "truth")?.contentMd
-    ?? detail.sections.find((section) => section.sectionType === "outline")?.contentMd
-    ?? "";
-  const dmBackgroundContent = linkifyMentions(dmBackground, detail.roles, detail.clues);
-  const dmFlowContent = linkifyMentions(dmFlow, detail.roles, detail.clues);
-  const truthContent = linkifyMentions(truth, detail.roles, detail.clues);
-  const contentBlock =
-    "w-full max-w-full overflow-hidden break-all whitespace-pre-wrap";
+  const entities = await ensureScriptEntities(id);
+  const truthEntities = entities.filter((entity) => entity.type === "truth");
+  const flowNodes = entities.filter((entity) => entity.type === "flow_node");
+  const roleEntities = entities.filter((entity) => entity.type === "role");
+  const clueEntities = entities.filter((entity) => entity.type === "clue");
+  const contentBlock = "w-full max-w-full overflow-hidden break-all whitespace-pre-wrap";
+  const renderEntityText = (entity: { content?: unknown }) =>
+    renderDocText(entity.content as Parameters<typeof renderDocText>[0]) || "暂无内容";
+  const secretLabels: Record<string, string> = {
+    low: "低",
+    medium: "中",
+    high: "高",
+  };
 
   return (
     <div className="grid gap-8">
@@ -52,7 +52,7 @@ export default async function PreviewScriptPage({ params }: PreviewPageProps) {
         <h1 className="font-display text-2xl text-ink-900">{detail.script.title}</h1>
         <p className="mt-2 text-sm text-ink-600">此页面仅作者可见。</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link href={`/scripts/${detail.script.id}/edit`}>
+          <Link href={`/scripts/${detail.script.id}/edit-v2`}>
             <Button variant="outline">返回编辑</Button>
           </Link>
           {detail.script.isPublic === 1 ? (
@@ -92,18 +92,39 @@ export default async function PreviewScriptPage({ params }: PreviewPageProps) {
               </span>
             </summary>
             <div className="mt-4 grid gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-ink-500">背景简介</p>
-                <div className={contentBlock}>
-                  <MarkdownBlock content={dmBackgroundContent || "暂无内容"} />
-                </div>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-ink-500">游戏流程</p>
-                <div className={contentBlock}>
-                  <MarkdownBlock content={dmFlowContent || "暂无内容"} />
-                </div>
-              </div>
+              {flowNodes.length === 0 ? (
+                <p className="text-sm text-ink-500">暂无流程节点</p>
+              ) : (
+                flowNodes.map((node) => {
+                  const flowProps = (node.props ?? {}) as {
+                    phase?: string;
+                    durationMinutes?: number;
+                    clueIds?: string[];
+                  };
+                  const clueIds = Array.isArray(flowProps.clueIds) ? flowProps.clueIds : [];
+                  return (
+                    <div
+                      key={node.id}
+                      className="rounded-2xl border border-ink-100 bg-paper-50/80 p-4"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="font-display text-lg text-ink-900">
+                          {node.title || "未命名流程节点"}
+                        </h3>
+                        <span className="text-xs text-ink-500">
+                          阶段 {flowProps.phase || "未设置"} · 时长 {flowProps.durationMinutes ?? 0} 分钟
+                        </span>
+                      </div>
+                      <div className={`mt-3 ${contentBlock}`}>{renderEntityText(node)}</div>
+                      {clueIds.length > 0 && (
+                        <p className="mt-3 text-xs text-ink-500">
+                          关联线索数：{clueIds.length}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </details>
         </Card>
@@ -115,10 +136,21 @@ export default async function PreviewScriptPage({ params }: PreviewPageProps) {
                 展开/收起
               </span>
             </summary>
-            <div className="mt-4">
-              <div className={contentBlock}>
-                <MarkdownBlock content={truthContent || "暂无内容"} />
-              </div>
+            <div className="mt-4 grid gap-4">
+              {truthEntities.length === 0 ? (
+                <p className="text-sm text-ink-500">暂无真相内容</p>
+              ) : (
+                truthEntities.map((entity) => (
+                  <div key={entity.id} className="grid gap-2">
+                    {truthEntities.length > 1 && (
+                      <p className="text-xs uppercase tracking-[0.2em] text-ink-500">
+                        {entity.title || "真相"}
+                      </p>
+                    )}
+                    <div className={contentBlock}>{renderEntityText(entity)}</div>
+                  </div>
+                ))
+              )}
             </div>
           </details>
         </Card>
@@ -134,28 +166,44 @@ export default async function PreviewScriptPage({ params }: PreviewPageProps) {
               </span>
             </summary>
             <div className="mt-4 grid gap-4">
-              {detail.roles.length === 0 ? (
+              {roleEntities.length === 0 ? (
                 <p className="text-sm text-ink-500">暂无角色</p>
               ) : (
-                detail.roles.map((role) => (
-                  <div key={role.id} id={`role-${role.id}`} className="rounded-2xl border border-ink-100 bg-paper-50/80 p-4">
-                    <h4 className="font-display text-lg text-ink-900">{role.name || "未命名角色"}</h4>
-                    <div className="mt-3 grid gap-3">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-ink-500">角色剧情</p>
-                        <div className={contentBlock}>
-                          <MarkdownBlock content={linkifyMentions(role.contentMd, detail.roles, detail.clues)} />
-                        </div>
+                roleEntities.map((role) => {
+                  const roleProps = (role.props ?? {}) as {
+                    secretLevel?: string;
+                    isMurderer?: boolean;
+                    tags?: string[];
+                  };
+                  const roleTags = Array.isArray(roleProps.tags) ? roleProps.tags : [];
+                  return (
+                    <div
+                      key={role.id}
+                      id={`role-${role.id}`}
+                      className="rounded-2xl border border-ink-100 bg-paper-50/80 p-4"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-display text-lg text-ink-900">
+                          {role.title || "未命名角色"}
+                        </h4>
+                        <Badge>秘密等级 {secretLabels[roleProps.secretLevel ?? "medium"] ?? "中"}</Badge>
+                        {roleProps.isMurderer ? (
+                          <Badge>凶手</Badge>
+                        ) : (
+                          <Badge className="border-dashed">非凶手</Badge>
+                        )}
                       </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-ink-500">角色任务</p>
-                        <div className={contentBlock}>
-                          <MarkdownBlock content={linkifyMentions(role.taskMd ?? "", detail.roles, detail.clues) || "暂无内容"} />
+                      {roleTags.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                          {roleTags.map((tag) => (
+                            <Badge key={tag}>#{tag}</Badge>
+                          ))}
                         </div>
-                      </div>
+                      )}
+                      <div className={`mt-3 ${contentBlock}`}>{renderEntityText(role)}</div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </details>
@@ -169,28 +217,39 @@ export default async function PreviewScriptPage({ params }: PreviewPageProps) {
               </span>
             </summary>
             <div className="mt-4 grid gap-4">
-              {detail.clues.length === 0 ? (
+              {clueEntities.length === 0 ? (
                 <p className="text-sm text-ink-500">暂无线索</p>
               ) : (
-                detail.clues.map((clue) => (
-                  <div key={clue.id} id={`clue-${clue.id}`} className="rounded-2xl border border-ink-100 bg-paper-50/80 p-4">
-                    <h4 className="font-display text-lg text-ink-900">{clue.title || "未命名线索"}</h4>
-                    <div className="mt-3 grid gap-3">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-ink-500">触发环节 / 条件</p>
-                        <div className={contentBlock}>
-                          <MarkdownBlock content={linkifyMentions(clue.triggerMd ?? "", detail.roles, detail.clues) || "暂无内容"} />
-                        </div>
+                clueEntities.map((clue) => {
+                  const clueProps = (clue.props ?? {}) as {
+                    clueType?: string;
+                    isHidden?: boolean;
+                    targetId?: string;
+                  };
+                  return (
+                    <div
+                      key={clue.id}
+                      id={`clue-${clue.id}`}
+                      className="rounded-2xl border border-ink-100 bg-paper-50/80 p-4"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-display text-lg text-ink-900">
+                          {clue.title || "未命名线索"}
+                        </h4>
+                        {clueProps.clueType && <Badge>{clueProps.clueType}</Badge>}
+                        {clueProps.isHidden ? (
+                          <Badge className="border-dashed">隐藏</Badge>
+                        ) : (
+                          <Badge>公开</Badge>
+                        )}
                       </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-ink-500">线索内容</p>
-                        <div className={contentBlock}>
-                          <MarkdownBlock content={linkifyMentions(clue.contentMd, detail.roles, detail.clues)} />
-                        </div>
-                      </div>
+                      {clueProps.targetId && (
+                        <p className="mt-2 text-xs text-ink-500">指向对象：{clueProps.targetId}</p>
+                      )}
+                      <div className={`mt-3 ${contentBlock}`}>{renderEntityText(clue)}</div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </details>

@@ -56,7 +56,7 @@ export default async function MyScriptsPage() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Link href={`/scripts/${script.id}/edit`}>
+                <Link href={`/scripts/${script.id}/edit-v2`}>
                   <Button variant="outline">编辑</Button>
                 </Link>
                 <Link href={`/scripts/${script.id}/preview`}>

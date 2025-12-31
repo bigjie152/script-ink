@@ -9,6 +9,7 @@ import {
   ratings,
   roles,
   scriptArchives,
+  scriptEntities,
   scriptFavorites,
   scriptIssues,
   scriptLikes,
@@ -21,6 +22,7 @@ import {
 import { getScriptDetail } from "@/lib/data";
 import { normalizeTags } from "@/lib/utils";
 import { syncScriptTags } from "@/lib/tags";
+import { getScriptEntities } from "@/services/script_entity_service";
 
 export const runtime = "edge";
 
@@ -72,26 +74,6 @@ export async function PUT(request: Request, { params }: RouteContext) {
   const summary = String(body?.summary ?? "").trim();
   const isPublic = Boolean(body?.isPublic);
   const allowFork = Boolean(body?.allowFork);
-  const sections = (body?.sections ?? {}) as Record<string, unknown>;
-  type RoleInput = {
-    id?: string;
-    name?: string;
-    contentMd?: string;
-    taskMd?: string;
-  };
-  type ClueInput = {
-    id?: string;
-    title?: string;
-    contentMd?: string;
-    triggerMd?: string;
-  };
-
-  const rolesInput = Array.isArray(body?.roles)
-    ? (body.roles as RoleInput[])
-    : [];
-  const cluesInput = Array.isArray(body?.clues)
-    ? (body.clues as ClueInput[])
-    : [];
   const tagsInput = String(body?.tags ?? "");
   const versionNote = String(body?.versionNote ?? "").trim();
 
@@ -112,93 +94,6 @@ export async function PUT(request: Request, { params }: RouteContext) {
       updatedAt: now,
     })
     .where(eq(scripts.id, id));
-
-  const existingSections = detail.sections;
-  const dmBackgroundContent = String(sections.dmBackground ?? "");
-  const dmFlowContent = String(sections.dmFlow ?? "");
-  const truthContent = String(sections.truth ?? "");
-
-  const dmBackgroundSection = existingSections.find(
-    (section) => section.sectionType === "dm_background"
-  );
-  const dmFlowSection = existingSections.find(
-    (section) => section.sectionType === "dm_flow"
-  );
-  const truthSection = existingSections.find(
-    (section) => section.sectionType === "truth"
-  );
-
-  if (dmBackgroundSection) {
-    await db
-      .update(scriptSections)
-      .set({ contentMd: dmBackgroundContent })
-      .where(eq(scriptSections.id, dmBackgroundSection.id));
-  } else {
-    await db.insert(scriptSections).values({
-      id: crypto.randomUUID(),
-      scriptId: id,
-      sectionType: "dm_background",
-      contentMd: dmBackgroundContent,
-    });
-  }
-
-  if (dmFlowSection) {
-    await db
-      .update(scriptSections)
-      .set({ contentMd: dmFlowContent })
-      .where(eq(scriptSections.id, dmFlowSection.id));
-  } else {
-    await db.insert(scriptSections).values({
-      id: crypto.randomUUID(),
-      scriptId: id,
-      sectionType: "dm_flow",
-      contentMd: dmFlowContent,
-    });
-  }
-
-  if (truthSection) {
-    await db
-      .update(scriptSections)
-      .set({ contentMd: truthContent })
-      .where(eq(scriptSections.id, truthSection.id));
-  } else {
-    await db.insert(scriptSections).values({
-      id: crypto.randomUUID(),
-      scriptId: id,
-      sectionType: "truth",
-      contentMd: truthContent,
-    });
-  }
-
-  await db.delete(roles).where(eq(roles.scriptId, id));
-  const roleRows = rolesInput
-    .map((role) => ({
-      id: String(role.id ?? crypto.randomUUID()),
-      scriptId: id,
-      name: String(role.name ?? "").trim(),
-      contentMd: String(role.contentMd ?? ""),
-      taskMd: String(role.taskMd ?? ""),
-    }))
-    .filter((role) => role.name || role.contentMd || role.taskMd);
-
-  if (roleRows.length > 0) {
-    await db.insert(roles).values(roleRows);
-  }
-
-  await db.delete(clues).where(eq(clues.scriptId, id));
-  const clueRows = cluesInput
-    .map((clue) => ({
-      id: String(clue.id ?? crypto.randomUUID()),
-      scriptId: id,
-      title: String(clue.title ?? "").trim(),
-      contentMd: String(clue.contentMd ?? ""),
-      triggerMd: String(clue.triggerMd ?? ""),
-    }))
-    .filter((clue) => clue.title || clue.contentMd || clue.triggerMd);
-
-  if (clueRows.length > 0) {
-    await db.insert(clues).values(clueRows);
-  }
 
   const tags = normalizeTags(tagsInput);
   await syncScriptTags(id, tags);
@@ -254,6 +149,7 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
     roles: detail.roles,
     clues: detail.clues,
     tags: detail.tags,
+    entities: await getScriptEntities(id),
     archivedAt: now,
   };
 
@@ -286,6 +182,7 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
   await db.delete(scriptTags).where(eq(scriptTags.scriptId, id));
   await db.delete(clues).where(eq(clues.scriptId, id));
   await db.delete(roles).where(eq(roles.scriptId, id));
+  await db.delete(scriptEntities).where(eq(scriptEntities.scriptId, id));
   await db.delete(scriptSections).where(eq(scriptSections.scriptId, id));
   await db
     .update(scripts)

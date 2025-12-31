@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, eq, isNull } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { scriptSections, scripts } from "@/lib/db/schema";
+import { scripts } from "@/lib/db/schema";
 import { getTruthLock, upsertTruthLock } from "@/services/truth_lock_controller";
 
 export const runtime = "edge";
@@ -63,12 +63,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   await upsertTruthLock(id, truth);
-
-  const db = getDb();
-  await db
-    .update(scriptSections)
-    .set({ contentMd: truth })
-    .where(and(eq(scriptSections.scriptId, id), eq(scriptSections.sectionType, "truth")));
 
   return NextResponse.json({ ok: true });
 }

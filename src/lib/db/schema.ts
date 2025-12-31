@@ -31,11 +31,26 @@ export const scripts = sqliteTable("scripts", {
   rootId: text("root_id"),
   parentId: text("parent_id"),
   deletedAt: integer("deleted_at"),
+  isMigrated: integer("is_migrated").notNull().default(0),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 }, (table) => ({
   authorIndex: index("scripts_author_id_idx").on(table.authorId),
   rootIndex: index("scripts_root_id_idx").on(table.rootId),
+}));
+
+export const scriptEntities = sqliteTable("script_entities", {
+  id: text("id").primaryKey(),
+  scriptId: text("script_id").notNull(),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  contentJson: text("content_json").notNull(),
+  propsJson: text("props_json").notNull(),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => ({
+  scriptIndex: index("script_entities_script_id_idx").on(table.scriptId),
+  typeIndex: index("script_entities_type_idx").on(table.type),
 }));
 
 export const scriptSections = sqliteTable("script_sections", {

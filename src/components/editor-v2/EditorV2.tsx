@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType } from "react";
+import Link from "next/link";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { Extension } from "@tiptap/core";
 
@@ -75,12 +76,10 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
 
 import { EntityMention, type EntityMentionItem } from "./EntityMention";
-import type { EntityType, ScriptEntity, ScriptEntityStore } from "./types";
-
-const STORAGE_VERSION = 1;
-const STORAGE_PREFIX = "script:editor-v2";
+import type { EntityType, ScriptEntity } from "./types";
 
 const EMPTY_DOC = {
   type: "doc",
@@ -169,7 +168,13 @@ const normalizeEntity = (entity: ScriptEntity): ScriptEntity => {
   };
 };
 
-const getStorageKey = (scriptId: string) => `${STORAGE_PREFIX}:${scriptId}`;
+type ScriptMeta = {
+  title: string;
+  summary: string;
+  tags: string;
+  isPublic: boolean;
+  allowFork: boolean;
+};
 
 const filterItems = (items: EntityMentionItem[], query: string) => {
   const keyword = query.trim().toLowerCase();
@@ -239,11 +244,26 @@ const EditorV2Inner = ({
 }) => {
   const [entities, setEntities] = useState<ScriptEntity[]>([]);
   const [activeEntityId, setActiveEntityId] = useState<string | null>(null);
+  const [scriptMeta, setScriptMeta] = useState<ScriptMeta>({
+    title: "",
+    summary: "",
+    tags: "",
+    isPublic: true,
+    allowFork: true,
+  });
+  const [versionNote, setVersionNote] = useState("");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [loadMessage, setLoadMessage] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
   const [showJson, setShowJson] = useState(false);
   const [loading, setLoading] = useState(true);
   const isSwitchingRef = useRef(false);
   const activeEntityRef = useRef<ScriptEntity | null>(null);
+  const initializedRef = useRef(false);
+  const saveTimerRef = useRef<number | null>(null);
+  const skipSaveRef = useRef(true);
 
   const roleItemsRef = useRef<EntityMentionItem[]>([]);
   const clueItemsRef = useRef<EntityMentionItem[]>([]);
@@ -400,47 +420,163 @@ const EditorV2Inner = ({
   );
 
   useEffect(() => {
-    const stored = typeof window !== "undefined" ? localStorage.getItem(getStorageKey(scriptId)) : null;
-    if (!stored) {
-      const truth = createEntity("truth");
-      const next = [truth];
-      setEntities(next);
-      setActiveEntityId(truth.id);
-      setLoading(false);
+    let isMounted = true;
+    const loadEntities = async () => {
+      setLoading(true);
+      setLoadMessage(null);
+
+      try {
+        const response = await fetch(`/api/scripts/${scriptId}/entities`);
+        if (!response.ok) {
+          const data = (await response.json().catch(() => null)) as { message?: string } | null;
+          if (isMounted) {
+            setLoadMessage(data?.message ?? "加载失败，请稍后重试。");
+            setLoading(false);
+          }
+          return;
+        }
+
+        const data = (await response.json().catch(() => null)) as {
+          script?: { title?: string; summary?: string | null; isPublic?: number | boolean; allowFork?: number | boolean };
+          tags?: string[];
+          entities?: ScriptEntity[];
+        } | null;
+
+        const normalized = (data?.entities ?? [])
+          .filter((entity) => ["truth", "role", "clue", "flow_node"].includes(entity.type))
+          .map((entity) => normalizeEntity(entity));
+        const hasTruth = normalized.some((entity) => entity.type === "truth");
+        if (!hasTruth) normalized.unshift(createEntity("truth"));
+
+        const nextActive = normalized.find((entity) => entity.type === "truth")?.id ?? normalized[0]?.id ?? null;
+        if (isMounted) {
+          setEntities(normalized);
+          setActiveEntityId(nextActive);
+          setScriptMeta({
+            title: String(data?.script?.title ?? ""),
+            summary: String(data?.script?.summary ?? ""),
+            tags: (data?.tags ?? []).map((tag) => `#${tag}`).join(" "),
+            isPublic: Boolean(data?.script?.isPublic),
+            allowFork: Boolean(data?.script?.allowFork),
+          });
+          setLastSavedAt(null);
+          setSaveStatus("idle");
+          setSaveMessage(null);
+          setIsDirty(false);
+          skipSaveRef.current = true;
+          initializedRef.current = true;
+        }
+      } catch {
+        if (isMounted) {
+          setLoadMessage("加载失败，请稍后重试。");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadEntities();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [scriptId]);
+
+  const saveEntities = useCallback(
+    async (mode: "auto" | "manual") => {
+      const title = scriptMeta.title.trim();
+      if (!title) {
+        if (mode === "manual") {
+          setSaveMessage("请先填写剧本标题。");
+        }
+        return false;
+      }
+
+      setSaveStatus("saving");
+      if (mode === "manual") {
+        setSaveMessage(null);
+      }
+
+      const payload = {
+        script: {
+          title,
+          summary: scriptMeta.summary,
+          tags: scriptMeta.tags,
+          isPublic: scriptMeta.isPublic,
+          allowFork: scriptMeta.allowFork,
+        },
+        entities,
+        versionNote: mode === "manual" ? versionNote : "",
+        mode,
+      };
+
+      const response = await fetch(`/api/scripts/${scriptId}/entities`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        setSaveStatus("error");
+        setSaveMessage("保存失败，请稍后再试。");
+        return false;
+      }
+
+      setSaveStatus("saved");
+      setLastSavedAt(new Date().toLocaleTimeString());
+      setIsDirty(false);
+      if (mode === "manual") {
+        setSaveMessage("已保存");
+      }
+      return true;
+    },
+    [entities, scriptId, scriptMeta, versionNote]
+  );
+
+  const handleManualSave = useCallback(async () => {
+    const ok = await saveEntities("manual");
+    if (ok) {
+      setVersionNote("");
+    }
+  }, [saveEntities]);
+
+  useEffect(() => {
+    if (loading || !initializedRef.current) return;
+    if (skipSaveRef.current) {
+      skipSaveRef.current = false;
       return;
     }
 
-    try {
-      const parsed = JSON.parse(stored) as ScriptEntityStore;
-      if (!parsed?.entities?.length) {
-        throw new Error("empty");
-      }
-      const normalized = parsed.entities
-        .filter((entity) => ["truth", "role", "clue", "flow_node"].includes(entity.type))
-        .map((entity) => normalizeEntity(entity));
-      const hasTruth = normalized.some((entity) => entity.type === "truth");
-      if (!hasTruth) normalized.unshift(createEntity("truth"));
-      const nextActive = parsed.activeEntityId ?? normalized[0]?.id;
-      setEntities(normalized);
-      setActiveEntityId(nextActive ?? normalized[0]?.id ?? null);
-    } catch {
-      const truth = createEntity("truth");
-      setEntities([truth]);
-      setActiveEntityId(truth.id);
+    setIsDirty(true);
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current);
     }
-    setLoading(false);
-  }, [scriptId]);
+    saveTimerRef.current = window.setTimeout(() => {
+      void saveEntities("auto");
+    }, 900);
+  }, [entities, scriptMeta, loading, saveEntities]);
 
   useEffect(() => {
-    if (loading) return;
-    const payload: ScriptEntityStore = {
-      version: STORAGE_VERSION,
-      entities,
-      activeEntityId: activeEntityId ?? undefined,
+    if (!isDirty) return;
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
     };
-    localStorage.setItem(getStorageKey(scriptId), JSON.stringify(payload));
-    setLastSavedAt(new Date().toLocaleTimeString());
-  }, [entities, activeEntityId, scriptId, loading]);
+    window.addEventListener("beforeunload", handler);
+    return () => {
+      window.removeEventListener("beforeunload", handler);
+    };
+  }, [isDirty]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!editor || !activeEntity) return;
@@ -489,7 +625,11 @@ const EditorV2Inner = ({
   };
 
   if (loading || !activeEntity) {
-    return <div className="text-sm text-ink-600">编辑器加载中...</div>;
+    return (
+      <div className="text-sm text-ink-600">
+        {loadMessage ?? "编辑器加载中..."}
+      </div>
+    );
   }
 
   const truthProps = activeEntity.type === "truth" ? activeEntity.props : null;
@@ -507,15 +647,92 @@ const EditorV2Inner = ({
 
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-ink-100 bg-white/80 px-4 py-3">
-        <div className="text-sm text-ink-600">
-          当前剧本：<span className="font-semibold text-ink-900">{scriptId}</span>
+      <div className="grid gap-4 rounded-3xl border border-ink-100 bg-white/80 px-4 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-500">剧本信息</p>
+            <h2 className="font-display text-lg text-ink-900">
+              {scriptMeta.title ? scriptMeta.title : "未命名剧本"}
+            </h2>
+            <p className="mt-1 text-xs text-ink-500">
+              {saveStatus === "saving" && "保存中..."}
+              {saveStatus === "error" && "保存失败，请重试。"}
+              {saveStatus === "saved" && lastSavedAt ? `已保存：${lastSavedAt}` : ""}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" onClick={handleManualSave}>
+              保存
+            </Button>
+            <Link href={`/scripts/${scriptId}/preview`}>
+              <Button variant="outline" type="button">
+                预览
+              </Button>
+            </Link>
+            <Button variant="outline" type="button" onClick={() => setShowJson((prev) => !prev)}>
+              {showJson ? "隐藏 JSON" : "查看 JSON"}
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-3 text-xs text-ink-500">
-          {lastSavedAt && <span>已自动保存：{lastSavedAt}</span>}
-          <Button variant="outline" type="button" onClick={() => setShowJson((prev) => !prev)}>
-            {showJson ? "隐藏 JSON" : "查看 JSON"}
-          </Button>
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
+          <div className="grid gap-3">
+            <Input
+              value={scriptMeta.title}
+              onChange={(event) =>
+                setScriptMeta((prev) => ({ ...prev, title: event.target.value }))
+              }
+              placeholder="剧本标题"
+            />
+            <Textarea
+              rows={3}
+              value={scriptMeta.summary}
+              onChange={(event) =>
+                setScriptMeta((prev) => ({ ...prev, summary: event.target.value }))
+              }
+              placeholder="剧本简介"
+            />
+            <Input
+              value={scriptMeta.tags}
+              onChange={(event) =>
+                setScriptMeta((prev) => ({ ...prev, tags: event.target.value }))
+              }
+              placeholder="#古风 #密室 #情感"
+            />
+            <Textarea
+              rows={2}
+              value={versionNote}
+              onChange={(event) => setVersionNote(event.target.value)}
+              placeholder="更新说明（可选）"
+            />
+            {saveMessage && <p className="text-xs text-ink-600">{saveMessage}</p>}
+          </div>
+
+          <div className="grid gap-3 rounded-2xl border border-ink-100 bg-paper-50/60 p-3 text-sm text-ink-600">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={scriptMeta.isPublic}
+                onChange={(event) =>
+                  setScriptMeta((prev) => ({ ...prev, isPublic: event.target.checked }))
+                }
+              />
+              公开发布
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={scriptMeta.allowFork}
+                onChange={(event) =>
+                  setScriptMeta((prev) => ({ ...prev, allowFork: event.target.checked }))
+                }
+              />
+              允许改编
+            </label>
+            <div className="text-xs text-ink-500">
+              自动保存已开启，离开页面会提示未保存内容。
+            </div>
+          </div>
         </div>
       </div>
 

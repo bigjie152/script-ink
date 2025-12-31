@@ -1,9 +1,10 @@
 ﻿import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { scriptSections, scripts } from "@/lib/db/schema";
+import { scripts } from "@/lib/db/schema";
 import { normalizeTags } from "@/lib/utils";
 import { syncScriptTags } from "@/lib/tags";
+import { ensureScriptEntities } from "@/services/script_entity_service";
 
 export const runtime = "edge";
 
@@ -42,26 +43,7 @@ export async function POST(request: Request) {
     updatedAt: now,
   });
 
-  await db.insert(scriptSections).values([
-    {
-      id: crypto.randomUUID(),
-      scriptId,
-      sectionType: "dm_background",
-      contentMd: "",
-    },
-    {
-      id: crypto.randomUUID(),
-      scriptId,
-      sectionType: "dm_flow",
-      contentMd: "",
-    },
-    {
-      id: crypto.randomUUID(),
-      scriptId,
-      sectionType: "truth",
-      contentMd: "",
-    },
-  ]);
+  await ensureScriptEntities(scriptId);
 
   const tags = normalizeTags(tagInput);
   await syncScriptTags(scriptId, tags);

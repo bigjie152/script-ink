@@ -14,7 +14,7 @@ export const ForkButton = ({ scriptId }: { scriptId: string }) => {
       alert("改编失败，请稍后再试。");
       return;
     }
-    window.location.href = `/scripts/${data.id}/edit`;
+    window.location.href = `/scripts/${data.id}/edit-v2`;
   };
 
   return (

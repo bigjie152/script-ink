@@ -37,7 +37,7 @@ export const ScriptCreateForm = () => {
       setMessage("创建失败");
       return;
     }
-    window.location.href = `/scripts/${data.id}/edit`;
+    window.location.href = `/scripts/${data.id}/edit-v2`;
   };
 
   return (
