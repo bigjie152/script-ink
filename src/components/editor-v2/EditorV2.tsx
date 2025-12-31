@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType } from "react";
 import NextLink from "next/link";
 import { EditorContent, useEditor } from "@tiptap/react";
-import type { Extension } from "@tiptap/core";
+import { FloatingMenu } from "@tiptap/react/menus";
+import type { Editor, Extension } from "@tiptap/core";
 
 import { Document } from "@tiptap/extension-document";
 import { Text } from "@tiptap/extension-text";
@@ -14,8 +15,9 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import { ListItem } from "@tiptap/extension-list";
 import { Dropcursor, Gapcursor, Placeholder, TrailingNode } from "@tiptap/extensions";
 
-import { RichTextProvider } from "@editor-v2/components";
+import { ActionButton, RichTextProvider } from "@editor-v2/components";
 import { SlashCommand, SlashCommandList } from "@editor-v2/extensions/SlashCommand";
+import type { CommandList } from "@editor-v2/extensions/SlashCommand/types";
 import { History, RichTextRedo, RichTextUndo } from "@editor-v2/extensions/History";
 import { SearchAndReplace, RichTextSearchAndReplace } from "@editor-v2/extensions/SearchAndReplace";
 import { Clear, RichTextClear } from "@editor-v2/extensions/Clear";
@@ -235,6 +237,60 @@ const RichTextToolbar = ({ wordToolbar }: { wordToolbar?: WordToolbarComponents 
   );
 };
 
+const MinimalTextBubble = () => (
+  <div className="richtext-flex richtext-items-center richtext-gap-1 richtext-rounded-md !richtext-border !richtext-border-solid !richtext-border-border richtext-bg-popover richtext-p-1 richtext-text-popover-foreground richtext-shadow-md richtext-outline-none">
+    <RichTextBold />
+    <RichTextItalic />
+    <RichTextStrike />
+    <RichTextCode />
+    <RichTextLink />
+  </div>
+);
+
+const EditorFloatingMenu = ({ editor }: { editor: Editor | null }) => {
+  if (!editor) return null;
+
+  const shouldShow = ({ editor: currentEditor, state }: { editor: Editor; state: any }) => {
+    if (!currentEditor.isEditable) return false;
+    if (!state.selection.empty) return false;
+    const { $from } = state.selection;
+    const isParagraph = $from.parent.type.name === "paragraph";
+    const isEmpty = $from.parent.content.size === 0;
+    return isParagraph && isEmpty;
+  };
+
+  return (
+    <FloatingMenu
+      editor={editor}
+      shouldShow={shouldShow}
+      tippyOptions={{ duration: 120, offset: [0, 8], placement: "right-start" }}
+    >
+      <div className="richtext-flex richtext-items-center richtext-gap-1 richtext-rounded-md !richtext-border !richtext-border-solid !richtext-border-border richtext-bg-popover richtext-p-1 richtext-text-popover-foreground richtext-shadow-md">
+        <ActionButton
+          icon="Heading2"
+          tooltip="标题"
+          action={() => editor.chain().focus().setHeading({ level: 2 }).run()}
+        />
+        <ActionButton
+          icon="List"
+          tooltip="无序列表"
+          action={() => editor.chain().focus().toggleBulletList().run()}
+        />
+        <ActionButton
+          icon="ListOrdered"
+          tooltip="有序列表"
+          action={() => editor.chain().focus().toggleOrderedList().run()}
+        />
+        <ActionButton
+          icon="Minus"
+          tooltip="分隔线"
+          action={() => editor.chain().focus().setHorizontalRule().run()}
+        />
+      </div>
+    </FloatingMenu>
+  );
+};
+
 const EditorV2Inner = ({
   scriptId,
   wordTools,
@@ -253,17 +309,21 @@ const EditorV2Inner = ({
   });
   const [versionNote, setVersionNote] = useState("");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "saving" | "saved" | "error" | "offline"
+  >("idle");
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [loadMessage, setLoadMessage] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [showJson, setShowJson] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(true);
   const isSwitchingRef = useRef(false);
   const activeEntityRef = useRef<ScriptEntity | null>(null);
   const initializedRef = useRef(false);
   const saveTimerRef = useRef<number | null>(null);
   const skipSaveRef = useRef(true);
+  const wasOnlineRef = useRef(true);
 
   const roleItemsRef = useRef<EntityMentionItem[]>([]);
   const clueItemsRef = useRef<EntityMentionItem[]>([]);
@@ -276,6 +336,86 @@ const EditorV2Inner = ({
   const roles = useMemo(() => entities.filter((entity) => entity.type === "role"), [entities]);
   const clues = useMemo(() => entities.filter((entity) => entity.type === "clue"), [entities]);
   const flowNodes = useMemo(() => entities.filter((entity) => entity.type === "flow_node"), [entities]);
+  const slashCommandList = useMemo<CommandList[]>(
+    () => [
+      {
+        name: "format",
+        title: "格式",
+        commands: [
+          {
+            name: "heading",
+            label: "标题",
+            aliases: ["h2", "bt", "biaoti"],
+            iconName: "Heading2",
+            action: ({ editor, range }) => {
+              editor.chain().focus().deleteRange(range).setHeading({ level: 2 }).run();
+            },
+          },
+          {
+            name: "bulletList",
+            label: "无序列表",
+            aliases: ["ul", "list"],
+            iconName: "List",
+            action: ({ editor, range }) => {
+              editor.chain().focus().deleteRange(range).toggleBulletList().run();
+            },
+          },
+          {
+            name: "orderedList",
+            label: "有序列表",
+            aliases: ["ol", "ordered"],
+            iconName: "ListOrdered",
+            action: ({ editor, range }) => {
+              editor.chain().focus().deleteRange(range).toggleOrderedList().run();
+            },
+          },
+          {
+            name: "blockquote",
+            label: "引用块",
+            aliases: ["quote", "yinyong"],
+            iconName: "TextQuote",
+            action: ({ editor, range }) => {
+              editor.chain().focus().deleteRange(range).setBlockquote().run();
+            },
+          },
+          {
+            name: "horizontalRule",
+            label: "分隔线",
+            aliases: ["hr", "divider"],
+            iconName: "Minus",
+            action: ({ editor, range }) => {
+              editor.chain().focus().deleteRange(range).setHorizontalRule().run();
+            },
+          },
+        ],
+      },
+      {
+        name: "insert",
+        title: "插入",
+        commands: [
+          {
+            name: "mentionRole",
+            label: "插入角色引用",
+            aliases: ["role", "@角色"],
+            iconName: "BookMarked",
+            action: ({ editor, range }) => {
+              editor.chain().focus().deleteRange(range).insertContent("@").run();
+            },
+          },
+          {
+            name: "mentionClue",
+            label: "插入线索引用",
+            aliases: ["clue", "#线索"],
+            iconName: "Sparkles",
+            action: ({ editor, range }) => {
+              editor.chain().focus().deleteRange(range).insertContent("#").run();
+            },
+          },
+        ],
+      },
+    ],
+    []
+  );
 
   useEffect(() => {
     roleItemsRef.current = roles.map((role) => ({
@@ -291,6 +431,32 @@ const EditorV2Inner = ({
       entityType: "clue",
     }));
   }, [roles, clues]);
+
+  useEffect(() => {
+    const online = typeof navigator !== "undefined" ? navigator.onLine : true;
+    setIsOnline(online);
+    wasOnlineRef.current = online;
+
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isOnline) {
+      setSaveStatus("offline");
+      return;
+    }
+    if (saveStatus === "offline" && !isDirty) {
+      setSaveStatus("idle");
+    }
+  }, [isOnline, isDirty, saveStatus]);
 
   useEffect(() => {
     activeEntityRef.current = activeEntity;
@@ -494,6 +660,14 @@ const EditorV2Inner = ({
         return false;
       }
 
+      if (!isOnline) {
+        setSaveStatus("offline");
+        if (mode === "manual") {
+          setSaveMessage("当前离线，无法保存。");
+        }
+        return false;
+      }
+
       setSaveStatus("saving");
       if (mode === "manual") {
         setSaveMessage(null);
@@ -512,15 +686,33 @@ const EditorV2Inner = ({
         mode,
       };
 
-      const response = await fetch(`/api/scripts/${scriptId}/entities`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      let response: Response;
+      try {
+        response = await fetch(`/api/scripts/${scriptId}/entities`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+          setSaveStatus("offline");
+          if (mode === "manual") {
+            setSaveMessage("当前离线，无法保存。");
+          }
+        } else {
+          setSaveStatus("error");
+          if (mode === "manual") {
+            setSaveMessage("保存失败，请稍后再试。");
+          }
+        }
+        return false;
+      }
 
       if (!response.ok) {
         setSaveStatus("error");
-        setSaveMessage("保存失败，请稍后再试。");
+        if (mode === "manual") {
+          setSaveMessage("保存失败，请稍后再试。");
+        }
         return false;
       }
 
@@ -529,10 +721,12 @@ const EditorV2Inner = ({
       setIsDirty(false);
       if (mode === "manual") {
         setSaveMessage("已保存");
+      } else {
+        setSaveMessage(null);
       }
       return true;
     },
-    [entities, scriptId, scriptMeta, versionNote]
+    [entities, isOnline, scriptId, scriptMeta, versionNote]
   );
 
   const handleManualSave = useCallback(async () => {
@@ -557,6 +751,17 @@ const EditorV2Inner = ({
       void saveEntities("auto");
     }, 900);
   }, [entities, scriptMeta, loading, saveEntities]);
+
+  useEffect(() => {
+    if (!isOnline) {
+      wasOnlineRef.current = false;
+      return;
+    }
+    if (!wasOnlineRef.current && isDirty && initializedRef.current && !loading) {
+      void saveEntities("auto");
+    }
+    wasOnlineRef.current = true;
+  }, [isOnline, isDirty, loading, saveEntities]);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -644,6 +849,15 @@ const EditorV2Inner = ({
     activeEntity.type === "flow_node"
       ? (flowProps?.clueIds as string[] | undefined)?.join(", ") ?? ""
       : "";
+  const showRetry = isDirty && (saveStatus === "error" || saveStatus === "offline");
+  const saveStatusLabel = (() => {
+    if (saveStatus === "saving") return "保存中…";
+    if (saveStatus === "offline") return isDirty ? "离线，等待网络恢复" : "离线";
+    if (saveStatus === "error") return "保存失败";
+    if (saveStatus === "saved" && lastSavedAt) return `已保存：${lastSavedAt}`;
+    if (isDirty) return "未保存修改";
+    return "";
+  })();
 
   return (
     <div className="grid gap-4">
@@ -654,11 +868,18 @@ const EditorV2Inner = ({
             <h2 className="font-display text-lg text-ink-900">
               {scriptMeta.title ? scriptMeta.title : "未命名剧本"}
             </h2>
-            <p className="mt-1 text-xs text-ink-500">
-              {saveStatus === "saving" && "保存中..."}
-              {saveStatus === "error" && "保存失败，请重试。"}
-              {saveStatus === "saved" && lastSavedAt ? `已保存：${lastSavedAt}` : ""}
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-500">
+              <span>{saveStatusLabel}</span>
+              {showRetry && (
+                <button
+                  type="button"
+                  className="rounded-full border border-ink-200 px-2 py-0.5 text-[11px] text-ink-700 hover:border-ink-400"
+                  onClick={handleManualSave}
+                >
+                  点击重试
+                </button>
+              )}
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" onClick={handleManualSave}>
@@ -890,6 +1111,7 @@ const EditorV2Inner = ({
               <div className="flex max-h-full w-full flex-col">
                 <RichTextToolbar wordToolbar={wordTools.toolbar} />
                 <EditorContent editor={editor} />
+                <EditorFloatingMenu editor={editor} />
 
                 <RichTextBubbleColumns />
                 <RichTextBubbleDrawer />
@@ -902,10 +1124,10 @@ const EditorV2Inner = ({
                 <RichTextBubbleImageGif />
                 <RichTextBubbleMermaid />
                 <RichTextBubbleTable />
-                <RichTextBubbleText />
+                <RichTextBubbleText buttonBubble={<MinimalTextBubble />} />
                 <RichTextBubbleTwitter />
                 <RichTextBubbleMenuDragHandle />
-                <SlashCommandList />
+                <SlashCommandList commandList={slashCommandList} />
               </div>
             </RichTextProvider>
           )}
