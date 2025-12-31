@@ -6,6 +6,7 @@ import NextLink from "next/link";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { FloatingMenu } from "@tiptap/react/menus";
 import type { Editor, Extension } from "@tiptap/core";
+import { EditorState } from "@tiptap/pm/state";
 
 import { Document } from "@tiptap/extension-document";
 import { Text } from "@tiptap/extension-text";
@@ -250,7 +251,7 @@ const MinimalTextBubble = () => (
 const EditorFloatingMenu = ({ editor }: { editor: Editor | null }) => {
   if (!editor) return null;
 
-  const shouldShow = ({ editor: currentEditor, state }: { editor: Editor; state: any }) => {
+  const shouldShow = ({ editor: currentEditor, state }: { editor: Editor; state: EditorState }) => {
     if (!currentEditor.isEditable) return false;
     if (!state.selection.empty) return false;
     const { $from } = state.selection;
