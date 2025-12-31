@@ -258,13 +258,11 @@ export const ensureScriptEntities = async (scriptId: string) => {
   const resolved = entities.length > 0 ? entities : buildDefaultEntities();
   const now = Date.now();
 
-  await db.transaction(async (tx) => {
-    await tx.insert(scriptEntities).values(resolved.map((entity) => toEntityRow(scriptId, entity, now)));
-    await tx
-      .update(scripts)
-      .set({ isMigrated: 1, updatedAt: now })
-      .where(eq(scripts.id, scriptId));
-  });
+  await db.insert(scriptEntities).values(resolved.map((entity) => toEntityRow(scriptId, entity, now)));
+  await db
+    .update(scripts)
+    .set({ isMigrated: 1, updatedAt: now })
+    .where(eq(scripts.id, scriptId));
 
   return resolved;
 };
@@ -279,39 +277,37 @@ export const upsertScriptEntities = async (scriptId: string, entities: ScriptEnt
   const incomingIds = new Set(entities.map((entity) => entity.id));
   const now = Date.now();
 
-  await db.transaction(async (tx) => {
-    if (existingIds.size > 0) {
-      const toDelete = Array.from(existingIds).filter((id) => !incomingIds.has(id));
-      if (toDelete.length > 0) {
-        await tx
-          .delete(scriptEntities)
-          .where(and(eq(scriptEntities.scriptId, scriptId), inArray(scriptEntities.id, toDelete)));
-      }
+  if (existingIds.size > 0) {
+    const toDelete = Array.from(existingIds).filter((id) => !incomingIds.has(id));
+    if (toDelete.length > 0) {
+      await db
+        .delete(scriptEntities)
+        .where(and(eq(scriptEntities.scriptId, scriptId), inArray(scriptEntities.id, toDelete)));
     }
+  }
 
-    for (const entity of entities) {
-      const payload = {
-        title: entity.title,
-        contentJson: JSON.stringify(ensureDoc(entity.content)),
-        propsJson: JSON.stringify(entity.props ?? {}),
-        updatedAt: now,
-      };
-      if (existingIds.has(entity.id)) {
-        await tx
-          .update(scriptEntities)
-          .set(payload)
-          .where(and(eq(scriptEntities.scriptId, scriptId), eq(scriptEntities.id, entity.id)));
-      } else {
-        await tx.insert(scriptEntities).values({
-          id: entity.id,
-          scriptId,
-          type: entity.type,
-          createdAt: now,
-          ...payload,
-        });
-      }
+  for (const entity of entities) {
+    const payload = {
+      title: entity.title,
+      contentJson: JSON.stringify(ensureDoc(entity.content)),
+      propsJson: JSON.stringify(entity.props ?? {}),
+      updatedAt: now,
+    };
+    if (existingIds.has(entity.id)) {
+      await db
+        .update(scriptEntities)
+        .set(payload)
+        .where(and(eq(scriptEntities.scriptId, scriptId), eq(scriptEntities.id, entity.id)));
+    } else {
+      await db.insert(scriptEntities).values({
+        id: entity.id,
+        scriptId,
+        type: entity.type,
+        createdAt: now,
+        ...payload,
+      });
     }
-  });
+  }
 };
 
 export const updateScriptMeta = async (input: {
@@ -352,4 +348,3 @@ export const updateScriptMeta = async (input: {
     });
   }
 };
-
