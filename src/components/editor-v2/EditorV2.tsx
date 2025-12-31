@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType } from "react";
-import Link from "next/link";
+import NextLink from "next/link";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { Extension } from "@tiptap/core";
 
@@ -664,11 +664,11 @@ const EditorV2Inner = ({
             <Button type="button" onClick={handleManualSave}>
               保存
             </Button>
-            <Link href={`/scripts/${scriptId}/preview`}>
+            <NextLink href={`/scripts/${scriptId}/preview`}>
               <Button variant="outline" type="button">
                 预览
               </Button>
-            </Link>
+            </NextLink>
             <Button variant="outline" type="button" onClick={() => setShowJson((prev) => !prev)}>
               {showJson ? "隐藏 JSON" : "查看 JSON"}
             </Button>
