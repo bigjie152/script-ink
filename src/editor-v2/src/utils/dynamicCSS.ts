@@ -113,15 +113,25 @@ export function injectCSS(css: string, option: Options = {}) {
       });
 
       if (existStyle.length > 0) {
-        // @ts-ignore
-        container.insertBefore(styleNode, existStyle.at(-1).nextSibling);
+        const lastStyle = existStyle.at(-1);
+        const referenceNode = lastStyle?.nextSibling ?? null;
+        if (lastStyle && contains(container as any, lastStyle)) {
+          // @ts-ignore
+          container.insertBefore(styleNode, referenceNode);
+        } else {
+          container.appendChild(styleNode);
+        }
 
         return styleNode;
       }
     }
 
     // Use `insertBefore` as `prepend`
-    firstChild.before(styleNode);
+    if (firstChild) {
+      firstChild.before(styleNode);
+    } else {
+      container.appendChild(styleNode);
+    }
   } else {
     container.appendChild(styleNode);
   }
