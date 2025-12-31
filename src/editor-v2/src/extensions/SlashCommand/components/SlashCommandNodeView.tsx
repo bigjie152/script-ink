@@ -24,6 +24,21 @@ function SlashCommandNodeView(props: any, ref: any) {
 
   const commandQuery = useFilterCommandList(commandList, props.query);
 
+  const highlightMatch = (label: string) => {
+    const query = props.query?.trim();
+    if (!query) return label;
+    const lower = label.toLowerCase();
+    const idx = lower.indexOf(query.toLowerCase());
+    if (idx === -1) return label;
+    return (
+      <>
+        {label.slice(0, idx)}
+        <span className="notion-menu-highlight">{label.slice(idx, idx + query.length)}</span>
+        {label.slice(idx + query.length)}
+      </>
+    );
+  };
+
   const activeItemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useImperativeHandle(ref, () => {
@@ -127,60 +142,46 @@ function SlashCommandNodeView(props: any, ref: any) {
 
   return (
     <div
-    className="richtext-max-h-[min(80vh,24rem)] richtext-flex-wrap richtext-overflow-y-auto richtext-overflow-x-hidden  richtext-rounded-md  !richtext-border !richtext-border-solid !richtext-border-border richtext-bg-popover richtext-p-1 richtext-text-popover-foreground richtext-shadow-md richtext-outline-none"
+      className="notion-menu"
       data-richtext-portal
       ref={scrollContainer}
     >
-      <div className="richtext-px-2 richtext-pb-1 richtext-text-[10px] richtext-text-foreground/60">
-        {t('editor.command.hint')}
-      </div>
-      {commandQuery?.length
-        ? (
-          <div className="richtext-grid richtext-min-w-48 richtext-grid-cols-1 richtext-gap-0.5">
-            {commandQuery?.map((group: any, groupIndex: any) => {
-              return (
-                <Fragment key={`slash-${group.title}`}>
-                  <Label className="richtext-mx-[4px] richtext-mb-[4px] richtext-mt-[8px] !richtext-text-[0.65rem] richtext-uppercase ">
-                    {group.title}
-                  </Label>
-
-                  {group.commands.map((command: any, commandIndex: any) => {
-                    return (
-                      <button
-                        key={`command-${commandIndex}`}
-                        onClick={() => createCommandClickHandler(groupIndex, commandIndex)}
-                        ref={el => setActiveItemRef(groupIndex, commandIndex, el)}
-                        className={cn('richtext-flex richtext-items-center richtext-gap-3 richtext-px-2 richtext-py-1.5 richtext-text-sm richtext-text-foreground richtext-text-left richtext-w-full richtext-rounded-sm !richtext-outline-none !richtext-border-none richtext-transition-colors !richtext-bg-transparent hover:!richtext-bg-accent ', {
-                          'bg-item-active': selectedGroupIndex === groupIndex && selectedCommandIndex === commandIndex,
-                        })}
-                      >
-                        {command.iconUrl && <img alt=""
-                          className="richtext-size-6"
-                          src={command.iconUrl}
-                                            />}
-
-                        {command.iconName && (
-                          <IconComponent className="!richtext-mr-1 !richtext-text-lg"
-                            name={command.iconName}
-                          />
-                        )}
-
-                        {command.label}
-                      </button>
-                    );
+      <div className="notion-menu-hint">{t('editor.command.hint')}</div>
+      {commandQuery?.length ? (
+        <div className="notion-menu-list">
+          {commandQuery?.map((group: any, groupIndex: any) => (
+            <div className="notion-menu-section" key={`slash-${group.title}`}>
+              <Label className="notion-menu-group">{group.title}</Label>
+              {group.commands.map((command: any, commandIndex: any) => (
+                <button
+                  key={`command-${commandIndex}`}
+                  onClick={() => createCommandClickHandler(groupIndex, commandIndex)}
+                  ref={(el) => setActiveItemRef(groupIndex, commandIndex, el)}
+                  className={cn("notion-menu-item", {
+                    "notion-menu-item-active":
+                      selectedGroupIndex === groupIndex && selectedCommandIndex === commandIndex,
                   })}
-                </Fragment>
-              );
-            })}
-          </div>
-        )
-        : (
-          <div className="richtext-p-3">
-            <span className="richtext-text-xs richtext-text-foreground">
-              {t('editor.slash.empty')}
-            </span>
-          </div>
-        )}
+                >
+                  <span className="notion-menu-icon">
+                    {command.iconUrl && <img alt="" src={command.iconUrl} />}
+                    {command.iconName && <IconComponent name={command.iconName} />}
+                  </span>
+                  <span className="notion-menu-text">
+                    <span className="notion-menu-label">{highlightMatch(command.label)}</span>
+                    {command.description && (
+                      <span className="notion-menu-desc">{command.description}</span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="notion-menu-empty">
+          <span>{t('editor.slash.empty')}</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import DragHandle from '@tiptap/extension-drag-handle-react';
-import { type NodeSelection } from '@tiptap/pm/state';
+import { TextSelection, type NodeSelection } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
 
 import {
@@ -33,6 +33,7 @@ export function RichTextBubbleMenuDragHandle() {
   const [currentNode, setCurrentNode] = useState<any>(null);
   const [currentNodePos, setCurrentNodePos] = useState(-1);
   const [menuOpen, setMenuOpen] = useState(false);
+  const lastHandlePosRef = useRef<number | null>(null);
 
   const hasTextAlignExtension = editor?.extensionManager?.extensions?.some((ext: any) => ext?.name === TextAlign.name);
   const hasIndentExtension = editor?.extensionManager?.extensions?.some((ext: any) => ext?.name === Indent.name);
@@ -131,6 +132,26 @@ export function RichTextBubbleMenuDragHandle() {
     }
   };
 
+  const handleSelectBlock = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!editor || currentNodePos < 0) {
+      return;
+    }
+    if (event.shiftKey && lastHandlePosRef.current !== null) {
+      const from = Math.min(lastHandlePosRef.current, currentNodePos);
+      const to = Math.max(
+        lastHandlePosRef.current + (currentNode?.nodeSize || 0),
+        currentNodePos + (currentNode?.nodeSize || 0),
+      );
+      const tr = editor.state.tr.setSelection(TextSelection.create(editor.state.doc, from, to));
+      editor.view.dispatch(tr);
+      return;
+    }
+    editor.commands.setNodeSelection(currentNodePos);
+    lastHandlePosRef.current = currentNodePos;
+  };
+
   useEffect(() => {
     if (menuOpen) {
       editor.commands.setMeta('lockDragHandle', true);
@@ -152,28 +173,30 @@ export function RichTextBubbleMenuDragHandle() {
 
   return (
     <DragHandle
-      className='richtext-transition-all richtext-duration-200 richtext-ease-out'
+      className='richtext-transition-all richtext-duration-200 richtext-ease-out notion-handle'
       editor={editor}
       onNodeChange={handleNodeChange as any}
       pluginKey={'RichTextBubbleMenuDragHandle'}
     >
-      <div className="richtext-flex richtext-items-center richtext-gap-0.5">
+      <div
+        className="richtext-flex richtext-items-center richtext-gap-1"
+        onContextMenu={(event) => {
+          event.preventDefault();
+          handleMenuOpenChange(true);
+        }}
+      >
         <ActionButton
           action={handleAdd}
           disabled={!editable}
           icon='Plus'
-          tooltip='Insert block'
+          tooltip='插入块'
         />
 
         <ActionButton
           disabled={!editable}
           icon='Grip'
-          tooltip='Click for options, Hold for drag'
-          action={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleMenuOpenChange(!menuOpen);
-          }}
+          tooltip='选择 / 拖拽'
+          action={handleSelectBlock}
         />
 
         <DropdownMenu onOpenChange={handleMenuOpenChange}

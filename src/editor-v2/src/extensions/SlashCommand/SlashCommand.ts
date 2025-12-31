@@ -23,7 +23,6 @@ export const SlashCommand = /* @__PURE__ */ Extension.create<any>({
   // },
 
   addProseMirrorPlugins() {
-const MIN_MENU_VISIBLE_MS = 3000;
     let closeMenu: (() => void) | null = null;
 
     return [
@@ -65,15 +64,7 @@ const MIN_MENU_VISIBLE_MS = 3000;
 
         render: () => {
           let reactRenderer: any;
-          let exitTimer: number | null = null;
-          let openedAt = 0;
-
-          const clearExitTimer = () => {
-            if (exitTimer) {
-              window.clearTimeout(exitTimer);
-              exitTimer = null;
-            }
-          };
+          let lastProps: any = null;
 
           const destroy = () => {
             if (!reactRenderer) {
@@ -85,8 +76,44 @@ const MIN_MENU_VISIBLE_MS = 3000;
           };
 
           closeMenu = () => {
-            clearExitTimer();
             destroy();
+          };
+
+          const getSlashPos = () => {
+            if (!lastProps?.range?.from) {
+              return -1;
+            }
+            return lastProps.range.from - 1;
+          };
+
+          const hasTrigger = () => {
+            const slashPos = getSlashPos();
+            if (slashPos < 0) {
+              return false;
+            }
+            const { state } = lastProps.editor;
+            const slashChar = state.doc.textBetween(slashPos, slashPos + 1, '\0', '\0');
+            return slashChar === '/';
+          };
+
+          const shouldHoldMenu = () => {
+            if (!lastProps?.editor?.isFocused) {
+              return false;
+            }
+
+            const { state } = lastProps.editor;
+            if (!hasTrigger()) return false;
+
+            const slashPos = getSlashPos();
+            const selectionPos = state.selection.from;
+            return selectionPos >= slashPos && selectionPos <= lastProps.range.to;
+          };
+
+          const shouldCloseImmediately = () => {
+            if (!lastProps?.editor?.isFocused) {
+              return true;
+            }
+            return !hasTrigger();
           };
 
           return {
@@ -94,9 +121,7 @@ const MIN_MENU_VISIBLE_MS = 3000;
               if (!props.clientRect) {
                 return;
               }
-
-              openedAt = Date.now();
-              clearExitTimer();
+              lastProps = props;
 
               reactRenderer = new ReactRenderer(SlashCommandNodeView, {
                 props,
@@ -111,7 +136,7 @@ const MIN_MENU_VISIBLE_MS = 3000;
             },
 
             onUpdate(props) {
-              clearExitTimer();
+              lastProps = props;
               reactRenderer.updateProps(props);
 
               if (!props.clientRect) {
@@ -134,13 +159,14 @@ const MIN_MENU_VISIBLE_MS = 3000;
               if (!reactRenderer) {
                 return;
               }
-              const elapsed = Date.now() - openedAt;
-              const delay = Math.max(0, MIN_MENU_VISIBLE_MS - elapsed);
-              clearExitTimer();
-              exitTimer = window.setTimeout(() => {
+              if (shouldHoldMenu()) {
+                return;
+              }
+              if (shouldCloseImmediately()) {
                 destroy();
-                exitTimer = null;
-              }, delay);
+                return;
+              }
+              destroy();
             },
           };
         },

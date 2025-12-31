@@ -1,3 +1,26 @@
+@import url("https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:wght@500;600&display=swap");
+
+:root {
+  --ink-bg: #f6f5f1;
+  --ink-surface: #ffffff;
+  --ink-border: #e6e2da;
+  --ink-muted: #7a756c;
+  --ink-text: #1f1f1f;
+  --ink-hover: rgba(55, 53, 47, 0.08);
+  --ink-selected: rgba(55, 53, 47, 0.14);
+  --ink-accent: #0b6ef6;
+  --ink-shadow: 0 10px 30px rgba(18, 15, 10, 0.08);
+}
+
+body.editor-v2-body {
+  background: var(--ink-bg);
+}
+
+body.editor-v2-body::before {
+  content: none;
+  display: none;
+}
+
 /* Static reset and default theme variables for editor-v2. */
 .reactjs-tiptap-editor,
 .reactjs-tiptap-editor *,
@@ -133,4 +156,701 @@ div[data-richtext-portal] * {
     max-width: 100%;
     height: auto;
   }
+}
+
+.editor-v2-shell {
+  --ink-bg: #f6f5f1;
+  --ink-surface: #ffffff;
+  --ink-border: #e6e2da;
+  --ink-muted: #7a756c;
+  --ink-text: #1f1f1f;
+  --ink-hover: rgba(55, 53, 47, 0.08);
+  --ink-selected: rgba(55, 53, 47, 0.14);
+  --ink-accent: #0b6ef6;
+  --ink-shadow: 0 10px 30px rgba(18, 15, 10, 0.08);
+  --app-header-height: 64px;
+  font-family: "Source Sans 3", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
+    system-ui, sans-serif;
+  background: var(--ink-bg);
+  color: var(--ink-text);
+  min-height: 0;
+  height: calc(100vh - var(--app-header-height));
+  overflow: hidden;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-v2-shell button,
+.editor-v2-shell input,
+.editor-v2-shell select,
+.editor-v2-shell textarea {
+  font-family: inherit;
+}
+
+.editor-v2-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px 10px;
+  border-bottom: 1px solid var(--ink-border);
+  background: var(--ink-bg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.editor-v2-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.editor-v2-title-input {
+  font-size: 21px;
+  font-weight: 600;
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: var(--ink-text);
+  width: 280px;
+}
+
+.editor-v2-title-input:focus {
+  outline: none;
+}
+
+.editor-v2-title-meta {
+  font-size: 12px;
+  color: var(--ink-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.editor-v2-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.editor-v2-header-button {
+  border: 1px solid var(--ink-border);
+  background: var(--ink-surface);
+  color: var(--ink-text);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.editor-v2-meta-panel {
+  margin: 10px 20px 0;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--ink-surface);
+  border: 1px solid var(--ink-border);
+  box-shadow: var(--ink-shadow);
+}
+
+.editor-v2-meta-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(200px, 1fr);
+  gap: 20px;
+}
+
+.editor-v2-meta-fields textarea,
+.editor-v2-meta-fields input {
+  border: 1px solid var(--ink-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.editor-v2-meta-settings {
+  display: grid;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.editor-v2-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 16px;
+  padding: 14px 20px 20px;
+  overflow: hidden;
+}
+
+.editor-v2-sidebar {
+  width: 220px;
+  min-width: 200px;
+  padding-right: 10px;
+  border-right: 1px solid var(--ink-border);
+  overflow: auto;
+}
+
+.editor-v2-sidebar-title {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-bottom: 10px;
+}
+
+.editor-v2-sidebar-search {
+  border-radius: 10px;
+  border: 1px solid var(--ink-border);
+  padding: 8px 10px;
+  background: var(--ink-surface);
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+
+.editor-v2-sidebar-group {
+  margin-bottom: 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(230, 226, 218, 0.6);
+}
+
+.editor-v2-sidebar-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-bottom: 6px;
+}
+
+.editor-v2-sidebar-group-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--ink-text);
+}
+
+.editor-v2-sidebar-toggle {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted);
+  background: transparent;
+}
+
+.editor-v2-sidebar-toggle:hover {
+  background: var(--ink-hover);
+}
+
+.editor-v2-sidebar-add {
+  font-size: 11px;
+  color: var(--ink-text);
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--ink-border);
+  background: var(--ink-surface);
+}
+
+.editor-v2-sidebar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.editor-v2-sidebar-item {
+  flex: 1;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--ink-text);
+  background: transparent;
+}
+
+.editor-v2-sidebar-item:hover {
+  background: var(--ink-hover);
+}
+
+.editor-v2-sidebar-item.is-active {
+  background: var(--ink-selected);
+  font-weight: 600;
+}
+
+.editor-v2-sidebar-remove {
+  font-size: 11px;
+  color: var(--ink-muted);
+  padding: 0 4px;
+  background: transparent;
+}
+
+.editor-v2-stage {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editor-v2-stage-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.editor-v2-stage-pill {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(55, 53, 47, 0.08);
+  color: var(--ink-muted);
+}
+
+.editor-v2-stage-title {
+  font-size: 17px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.editor-v2-stage-title:focus {
+  outline: none;
+}
+
+.editor-v2-stage-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.editor-v2-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--ink-border);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(6px);
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.editor-v2-topbar-status {
+  font-size: 12px;
+  color: var(--ink-muted);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.editor-v2-topbar-retry {
+  color: var(--ink-accent);
+  font-size: 12px;
+}
+
+.editor-v2-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor-v2-topbar-button {
+  border-radius: 10px;
+  padding: 5px 10px;
+  font-size: 12px;
+  border: 1px solid var(--ink-border);
+}
+
+.editor-v2-editor {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: transparent;
+}
+
+.editor-v2-editor-content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 24px 120px;
+}
+
+.editor-v2-editor-content .ProseMirror {
+  outline: none;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--ink-text);
+}
+
+.editor-v2-editor-content .ProseMirror > * {
+  position: relative;
+  padding: 6px 8px 6px 28px;
+  margin: 2px 0;
+  border-radius: 6px;
+  transition: background 120ms ease;
+}
+
+.editor-v2-editor-content .ProseMirror > *:hover {
+  background: var(--ink-hover);
+}
+
+.editor-v2-editor-content .ProseMirror > *:focus-within {
+  background: rgba(55, 53, 47, 0.06);
+}
+
+.editor-v2-editor-content ::selection {
+  background: rgba(11, 110, 246, 0.18);
+}
+
+.editor-v2-editor-content .ProseMirror .ProseMirror-selectednode {
+  background: var(--ink-selected);
+}
+
+.editor-v2-editor-content .ProseMirror h1 {
+  font-family: "Source Serif 4", "Songti SC", serif;
+  font-size: 30px;
+  line-height: 1.3;
+  margin-top: 18px;
+}
+
+.editor-v2-editor-content .ProseMirror h2 {
+  font-family: "Source Serif 4", "Songti SC", serif;
+  font-size: 24px;
+  line-height: 1.35;
+  margin-top: 14px;
+}
+
+.editor-v2-editor-content .ProseMirror h3 {
+  font-family: "Source Serif 4", "Songti SC", serif;
+  font-size: 20px;
+  line-height: 1.4;
+  margin-top: 12px;
+}
+
+.editor-v2-editor-content .ProseMirror blockquote {
+  border-left: 3px solid var(--ink-border);
+  padding-left: 16px;
+  color: var(--ink-muted);
+}
+
+.editor-v2-editor-content .ProseMirror code {
+  background: rgba(55, 53, 47, 0.08);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 0.92em;
+}
+
+.editor-v2-editor-content .ProseMirror pre {
+  background: rgba(55, 53, 47, 0.06);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 13px;
+}
+
+.editor-v2-editor-content .ProseMirror ul,
+.editor-v2-editor-content .ProseMirror ol {
+  padding-left: 18px;
+  margin: 6px 0;
+}
+
+.editor-v2-editor-content .ProseMirror hr {
+  border-top: 1px solid var(--ink-border);
+  margin: 12px 0;
+}
+
+.editor-v2-editor-content .callout {
+  border-radius: 12px;
+  border: 1px solid #f0e3c0;
+  background: #fdf8ec;
+  padding: 12px 16px;
+}
+
+.editor-v2-editor-content .callout[data-callout="info"] {
+  border-color: #d8e8ff;
+  background: #f2f7ff;
+}
+
+.editor-v2-editor-content .callout[data-callout="warning"] {
+  border-color: #f5d4a6;
+  background: #fff7e8;
+}
+
+.editor-v2-editor-content .callout[data-callout="danger"] {
+  border-color: #f0b4b4;
+  background: #fff0f0;
+}
+
+.editor-v2-panel {
+  width: 240px;
+  min-width: 220px;
+  border-left: 1px solid var(--ink-border);
+  padding-left: 12px;
+  overflow: auto;
+}
+
+.editor-v2-panel-header {
+  font-size: 12px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(230, 226, 218, 0.6);
+}
+
+.editor-v2-main--with-panel .editor-v2-editor-content {
+  max-width: 680px;
+}
+
+.editor-v2-panel label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.editor-v2-panel input,
+.editor-v2-panel select,
+.editor-v2-panel textarea {
+  border: 1px solid var(--ink-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: var(--ink-surface);
+  font-size: 13px;
+  color: var(--ink-text);
+}
+
+.editor-v2-shell .richtext-bg-popover {
+  background: var(--ink-surface) !important;
+}
+
+.editor-v2-shell .richtext-border-border {
+  border-color: var(--ink-border) !important;
+}
+
+.editor-v2-shell .richtext-shadow-md {
+  box-shadow: var(--ink-shadow) !important;
+}
+
+.notion-menu {
+  width: 320px;
+  max-height: 380px;
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid var(--ink-border);
+  background: var(--ink-surface);
+  box-shadow: var(--ink-shadow);
+  padding: 8px;
+  font-family: "Source Sans 3", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
+    system-ui, sans-serif;
+}
+
+.notion-menu--mention {
+  width: 260px;
+}
+
+.notion-menu-hint {
+  font-size: 11px;
+  color: var(--ink-muted);
+  padding: 4px 6px 6px;
+}
+
+.notion-menu-group {
+  font-size: 11px;
+  color: var(--ink-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 6px 6px 4px;
+}
+
+.notion-menu-list {
+  display: grid;
+  gap: 2px;
+}
+
+.notion-menu-section + .notion-menu-section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--ink-border);
+}
+
+.notion-menu-item {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  text-align: left;
+  color: var(--ink-text);
+  background: transparent;
+  transition: background 120ms ease;
+}
+
+.notion-menu-item:hover {
+  background: var(--ink-hover);
+}
+
+.notion-menu-item-active {
+  background: var(--ink-selected);
+}
+
+.notion-menu-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: rgba(55, 53, 47, 0.08);
+  color: var(--ink-muted);
+}
+
+.notion-menu-icon img {
+  width: 18px;
+  height: 18px;
+}
+
+.notion-menu-icon-pill {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.notion-menu-text {
+  display: grid;
+  gap: 2px;
+}
+
+.notion-menu-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.notion-menu-desc {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.notion-menu-highlight {
+  color: var(--ink-accent);
+}
+
+.notion-menu-empty {
+  font-size: 12px;
+  color: var(--ink-muted);
+  padding: 12px;
+}
+
+.entity-mention-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(55, 53, 47, 0.08);
+  color: var(--ink-text);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  position: relative;
+  transition: background 120ms ease;
+}
+
+.entity-mention-chip:hover {
+  background: rgba(55, 53, 47, 0.16);
+}
+
+.entity-mention-prefix {
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+
+.entity-mention-meta {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.entity-mention-preview {
+  position: absolute;
+  left: 0;
+  top: 120%;
+  width: 260px;
+  border-radius: 12px;
+  background: var(--ink-surface);
+  border: 1px solid var(--ink-border);
+  box-shadow: var(--ink-shadow);
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  z-index: 20;
+}
+
+.entity-mention-chip:hover .entity-mention-preview {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.entity-mention-preview-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.entity-mention-preview-meta {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.entity-mention-preview-summary {
+  font-size: 12px;
+  color: var(--ink-text);
+}
+
+.entity-mention-preview-hint {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.notion-floating-plus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ink-border);
+  background: var(--ink-surface);
+  font-size: 12px;
+  color: var(--ink-text);
+  box-shadow: 0 4px 14px rgba(18, 15, 10, 0.08);
+}
+
+.notion-floating-plus-icon {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.notion-handle {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.notion-handle .richtext-action-button {
+  background: transparent;
+  border-radius: 8px;
+}
+
+.notion-handle .richtext-action-button:hover {
+  background: rgba(55, 53, 47, 0.1);
+}
+
+.ProseMirror-dropcursor {
+  border-top: 2px solid var(--ink-accent);
+  margin-top: -1px;
 }
