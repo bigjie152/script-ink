@@ -264,7 +264,7 @@ const EditorFloatingMenu = ({ editor }: { editor: Editor | null }) => {
     <FloatingMenu
       editor={editor}
       shouldShow={shouldShow}
-      tippyOptions={{ duration: 120, offset: [0, 8], placement: "right-start" }}
+      options={{ offset: { mainAxis: 8, crossAxis: 0 }, placement: "right-start" }}
     >
       <div className="richtext-flex richtext-items-center richtext-gap-1 richtext-rounded-md !richtext-border !richtext-border-solid !richtext-border-border richtext-bg-popover richtext-p-1 richtext-text-popover-foreground richtext-shadow-md">
         <ActionButton
