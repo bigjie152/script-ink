@@ -4,10 +4,7 @@ import { type Editor } from '@tiptap/core';
 import { EditorContext } from '@tiptap/react';
 
 import { TooltipProvider } from '@editor-v2/components';
-import { RESET_CSS } from '@editor-v2/constants/resetCSS';
 import { EditorEditableReactive } from '@editor-v2/store/EditorEditableReactive';
-import { ThemeColorReactive } from '@editor-v2/store/ThemeColorReactive';
-import { removeCSS, updateCSS } from '@editor-v2/utils/dynamicCSS';
 
 interface IProviderRichTextProps {
   editor: Editor
@@ -17,14 +14,6 @@ interface IProviderRichTextProps {
 
 export function RichTextProvider({ editor, children }: IProviderRichTextProps) {
   const id = useId();
-
-  useEffect(() => {
-    updateCSS(RESET_CSS, 'react-tiptap-reset');
-
-    return () => {
-      removeCSS('react-tiptap-reset');
-    };
-  }, []);
 
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -48,8 +37,6 @@ export function RichTextProvider({ editor, children }: IProviderRichTextProps) {
         <EditorEditableReactive
           editor={editor}
         />
-
-        <ThemeColorReactive />
       </EditorContext.Provider>
     </div>
   );

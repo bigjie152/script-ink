@@ -1,4 +1,5 @@
 import "reactjs-tiptap-editor/style.css";
+import "@/styles/editor-v2-static.css";
 import "katex/dist/katex.min.css";
 import "easydrawer/styles.css";
 import "@excalidraw/excalidraw/index.css";
