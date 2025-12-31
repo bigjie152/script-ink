@@ -7,6 +7,8 @@ import type { Editor } from '@tiptap/core';
 import clsx from 'clsx';
 import scrollIntoView from 'scroll-into-view-if-needed';
 
+import { useLocale } from '@editor-v2/locales';
+
 interface IProps {
   editor: Editor
   items: Array<{
@@ -23,6 +25,7 @@ interface IProps {
 export const NodeViewMentionList: React.FC<IProps> = forwardRef((props, ref) => {
   const $container: any = useRef<HTMLDivElement>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const { t } = useLocale();
 
   const selectItem = (index: any) => {
     const userName = props.items[index];
@@ -78,6 +81,9 @@ export const NodeViewMentionList: React.FC<IProps> = forwardRef((props, ref) => 
       data-richtext-portal
       ref={$container}
     >
+      <div className="richtext-px-2 richtext-pb-1 richtext-text-[10px] richtext-text-foreground/60">
+        {t('editor.command.hint')}
+      </div>
       <div >
         {props.items.length > 0
           ? (
@@ -106,7 +112,7 @@ export const NodeViewMentionList: React.FC<IProps> = forwardRef((props, ref) => 
           )
           : (
             <div className={clsx('itemUserEmpty, richtext-text-foreground')}>
-              Empty
+              {t('editor.mention.empty')}
             </div>
           )}
       </div>

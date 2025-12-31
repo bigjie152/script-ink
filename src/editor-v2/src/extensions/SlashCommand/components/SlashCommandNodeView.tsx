@@ -131,6 +131,9 @@ function SlashCommandNodeView(props: any, ref: any) {
       data-richtext-portal
       ref={scrollContainer}
     >
+      <div className="richtext-px-2 richtext-pb-1 richtext-text-[10px] richtext-text-foreground/60">
+        {t('editor.command.hint')}
+      </div>
       {commandQuery?.length
         ? (
           <div className="richtext-grid richtext-min-w-48 richtext-grid-cols-1 richtext-gap-0.5">

@@ -1,5 +1,5 @@
 /** Default lang */
-export const DEFAULT_LANG_VALUE = 'en';
+export const DEFAULT_LANG_VALUE = 'zh_CN';
 
 /** Throttle time for editor input (milliseconds) */
 export const EDITOR_UPDATE_THROTTLE_WAIT_TIME = 200;

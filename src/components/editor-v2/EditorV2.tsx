@@ -99,6 +99,8 @@ type WordToolsState = {
   toolbar: WordToolbarComponents;
 };
 
+type SaveStatus = "idle" | "saving" | "saved" | "error" | "offline";
+
 const ENTITY_LABELS: Record<EntityType, string> = {
   truth: "真相",
   role: "角色",
@@ -185,12 +187,29 @@ const filterItems = (items: EntityMentionItem[], query: string) => {
   return items.filter((item) => item.label.toLowerCase().includes(keyword));
 };
 
-const RichTextToolbar = ({ wordToolbar }: { wordToolbar?: WordToolbarComponents }) => {
+type RichTextToolbarProps = {
+  wordToolbar?: WordToolbarComponents;
+  onSave: () => void;
+  onToggleJson: () => void;
+  showJson: boolean;
+  saveStatus: SaveStatus;
+  previewHref: string;
+};
+
+const RichTextToolbar = ({
+  wordToolbar,
+  onSave,
+  onToggleJson,
+  showJson,
+  saveStatus,
+  previewHref,
+}: RichTextToolbarProps) => {
   const ImportWordButton = wordToolbar?.ImportWord;
   const ExportWordButton = wordToolbar?.ExportWord;
+  const saveLabel = saveStatus === "saving" ? "保存中…" : "保存";
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-solid border-ink-100/70 bg-paper-50/80 px-2 py-2">
+    <div className="flex items-center gap-1 overflow-x-auto border-b border-solid border-ink-100/70 bg-paper-50/80 px-2 py-1">
       <RichTextUndo />
       <RichTextRedo />
       <RichTextSearchAndReplace />
@@ -234,6 +253,29 @@ const RichTextToolbar = ({ wordToolbar }: { wordToolbar?: WordToolbarComponents 
       <RichTextDrawer />
       <RichTextTwitter />
       <RichTextCodeView />
+      <div className="ml-auto flex items-center gap-2 pl-2">
+        <Button
+          type="button"
+          onClick={onSave}
+          disabled={saveStatus === "saving"}
+          className="px-3 py-1 text-xs"
+        >
+          {saveLabel}
+        </Button>
+        <NextLink href={previewHref}>
+          <Button variant="outline" type="button" className="px-3 py-1 text-xs">
+            预览
+          </Button>
+        </NextLink>
+        <Button
+          variant="outline"
+          type="button"
+          onClick={onToggleJson}
+          className="px-3 py-1 text-xs"
+        >
+          {showJson ? "隐藏 JSON" : "查看 JSON"}
+        </Button>
+      </div>
     </div>
   );
 };
@@ -310,19 +352,19 @@ const EditorV2Inner = ({
   });
   const [versionNote, setVersionNote] = useState("");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<
-    "idle" | "saving" | "saved" | "error" | "offline"
-  >("idle");
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [loadMessage, setLoadMessage] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [showJson, setShowJson] = useState(false);
+  const [showScriptMeta, setShowScriptMeta] = useState(false);
+  const [showPropsPanel, setShowPropsPanel] = useState(true);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const isSwitchingRef = useRef(false);
   const activeEntityRef = useRef<ScriptEntity | null>(null);
   const initializedRef = useRef(false);
-  const saveTimerRef = useRef<number | null>(null);
+  const autoSaveIntervalRef = useRef<number | null>(null);
   const skipSaveRef = useRef(true);
   const wasOnlineRef = useRef(true);
 
@@ -738,6 +780,21 @@ const EditorV2Inner = ({
   }, [saveEntities]);
 
   useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if ((event.ctrlKey || event.metaKey) && key === "s") {
+        event.preventDefault();
+        void handleManualSave();
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => {
+      window.removeEventListener("keydown", handler);
+    };
+  }, [handleManualSave]);
+
+  useEffect(() => {
     if (loading || !initializedRef.current) return;
     if (skipSaveRef.current) {
       skipSaveRef.current = false;
@@ -745,13 +802,29 @@ const EditorV2Inner = ({
     }
 
     setIsDirty(true);
-    if (saveTimerRef.current) {
-      window.clearTimeout(saveTimerRef.current);
+  }, [entities, scriptMeta, loading]);
+
+  useEffect(() => {
+    if (!initializedRef.current) return;
+    if (autoSaveIntervalRef.current) {
+      window.clearInterval(autoSaveIntervalRef.current);
     }
-    saveTimerRef.current = window.setTimeout(() => {
+
+    autoSaveIntervalRef.current = window.setInterval(() => {
+      if (!isDirty || loading) return;
+      if (!isOnline) {
+        setSaveStatus("offline");
+        return;
+      }
       void saveEntities("auto");
-    }, 900);
-  }, [entities, scriptMeta, loading, saveEntities]);
+    }, 180000);
+
+    return () => {
+      if (autoSaveIntervalRef.current) {
+        window.clearInterval(autoSaveIntervalRef.current);
+      }
+    };
+  }, [isDirty, isOnline, loading, saveEntities]);
 
   useEffect(() => {
     if (!isOnline) {
@@ -778,8 +851,8 @@ const EditorV2Inner = ({
 
   useEffect(() => {
     return () => {
-      if (saveTimerRef.current) {
-        window.clearTimeout(saveTimerRef.current);
+      if (autoSaveIntervalRef.current) {
+        window.clearInterval(autoSaveIntervalRef.current);
       }
     };
   }, []);
@@ -855,14 +928,17 @@ const EditorV2Inner = ({
     if (saveStatus === "saving") return "保存中…";
     if (saveStatus === "offline") return isDirty ? "离线，等待网络恢复" : "离线";
     if (saveStatus === "error") return "保存失败";
-    if (saveStatus === "saved" && lastSavedAt) return `已保存：${lastSavedAt}`;
     if (isDirty) return "未保存修改";
+    if (saveStatus === "saved" && lastSavedAt) return `已保存：${lastSavedAt}`;
     return "";
   })();
+  const layoutClassName = showPropsPanel
+    ? "grid gap-4 lg:grid-cols-[200px_minmax(0,1fr)_240px]"
+    : "grid gap-4 lg:grid-cols-[200px_minmax(0,1fr)]";
 
   return (
     <div className="grid gap-4">
-      <div className="grid gap-4 rounded-3xl border border-ink-100 bg-white/80 px-4 py-4">
+      <div className="grid gap-3 rounded-3xl border border-ink-100 bg-white/80 px-3 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-ink-500">剧本信息</p>
@@ -883,83 +959,90 @@ const EditorV2Inner = ({
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" onClick={handleManualSave}>
-              保存
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => setShowScriptMeta((prev) => !prev)}
+              className="px-3 py-1 text-xs"
+            >
+              {showScriptMeta ? "收起剧本设置" : "剧本设置"}
             </Button>
-            <NextLink href={`/scripts/${scriptId}/preview`}>
-              <Button variant="outline" type="button">
-                预览
-              </Button>
-            </NextLink>
-            <Button variant="outline" type="button" onClick={() => setShowJson((prev) => !prev)}>
-              {showJson ? "隐藏 JSON" : "查看 JSON"}
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => setShowPropsPanel((prev) => !prev)}
+              className="px-3 py-1 text-xs"
+            >
+              {showPropsPanel ? "隐藏属性面板" : "显示属性面板"}
             </Button>
           </div>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
-          <div className="grid gap-3">
-            <Input
-              value={scriptMeta.title}
-              onChange={(event) =>
-                setScriptMeta((prev) => ({ ...prev, title: event.target.value }))
-              }
-              placeholder="剧本标题"
-            />
-            <Textarea
-              rows={3}
-              value={scriptMeta.summary}
-              onChange={(event) =>
-                setScriptMeta((prev) => ({ ...prev, summary: event.target.value }))
-              }
-              placeholder="剧本简介"
-            />
-            <Input
-              value={scriptMeta.tags}
-              onChange={(event) =>
-                setScriptMeta((prev) => ({ ...prev, tags: event.target.value }))
-              }
-              placeholder="#古风 #密室 #情感"
-            />
-            <Textarea
-              rows={2}
-              value={versionNote}
-              onChange={(event) => setVersionNote(event.target.value)}
-              placeholder="更新说明（可选）"
-            />
-            {saveMessage && <p className="text-xs text-ink-600">{saveMessage}</p>}
-          </div>
+        {showScriptMeta && (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_200px]">
+            <div className="grid gap-3">
+              <Input
+                value={scriptMeta.title}
+                onChange={(event) =>
+                  setScriptMeta((prev) => ({ ...prev, title: event.target.value }))
+                }
+                placeholder="剧本标题"
+              />
+              <Textarea
+                rows={3}
+                value={scriptMeta.summary}
+                onChange={(event) =>
+                  setScriptMeta((prev) => ({ ...prev, summary: event.target.value }))
+                }
+                placeholder="剧本简介"
+              />
+              <Input
+                value={scriptMeta.tags}
+                onChange={(event) =>
+                  setScriptMeta((prev) => ({ ...prev, tags: event.target.value }))
+                }
+                placeholder="#古风 #密室 #情感"
+              />
+              <Textarea
+                rows={2}
+                value={versionNote}
+                onChange={(event) => setVersionNote(event.target.value)}
+                placeholder="更新说明（可选）"
+              />
+              {saveMessage && <p className="text-xs text-ink-600">{saveMessage}</p>}
+            </div>
 
-          <div className="grid gap-3 rounded-2xl border border-ink-100 bg-paper-50/60 p-3 text-sm text-ink-600">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={scriptMeta.isPublic}
-                onChange={(event) =>
-                  setScriptMeta((prev) => ({ ...prev, isPublic: event.target.checked }))
-                }
-              />
-              公开发布
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={scriptMeta.allowFork}
-                onChange={(event) =>
-                  setScriptMeta((prev) => ({ ...prev, allowFork: event.target.checked }))
-                }
-              />
-              允许改编
-            </label>
-            <div className="text-xs text-ink-500">
-              自动保存已开启，离开页面会提示未保存内容。
+            <div className="grid gap-3 rounded-2xl border border-ink-100 bg-paper-50/60 p-3 text-sm text-ink-600">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={scriptMeta.isPublic}
+                  onChange={(event) =>
+                    setScriptMeta((prev) => ({ ...prev, isPublic: event.target.checked }))
+                  }
+                />
+                公开发布
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={scriptMeta.allowFork}
+                  onChange={(event) =>
+                    setScriptMeta((prev) => ({ ...prev, allowFork: event.target.checked }))
+                  }
+                />
+                允许改编
+              </label>
+              <div className="text-xs text-ink-500">
+                每 3 分钟自动保存，离开页面会提示未保存内容。
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)_280px]">
-        <aside className="rounded-3xl border border-ink-100 bg-paper-50/80 p-4">
+      <div className={layoutClassName}>
+        <aside className="rounded-3xl border border-ink-100 bg-paper-50/80 p-3">
           <div className="flex items-center justify-between text-sm font-semibold text-ink-900">
             实体导航
           </div>
@@ -1095,7 +1178,7 @@ const EditorV2Inner = ({
         </aside>
 
         <section className="rounded-3xl border border-ink-100 bg-white/80">
-          <div className="flex flex-wrap items-center gap-3 border-b border-ink-100/60 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-3 border-b border-ink-100/60 px-3 py-2">
             <span className="rounded-full bg-ink-900 px-3 py-1 text-xs text-paper-50">
               {ENTITY_LABELS[activeEntity.type]}
             </span>
@@ -1110,7 +1193,14 @@ const EditorV2Inner = ({
           {editor && (
             <RichTextProvider editor={editor}>
               <div className="flex max-h-full w-full flex-col">
-                <RichTextToolbar wordToolbar={wordTools.toolbar} />
+                <RichTextToolbar
+                  wordToolbar={wordTools.toolbar}
+                  onSave={handleManualSave}
+                  onToggleJson={() => setShowJson((prev) => !prev)}
+                  showJson={showJson}
+                  saveStatus={saveStatus}
+                  previewHref={`/scripts/${scriptId}/preview`}
+                />
                 <EditorContent editor={editor} />
                 <EditorFloatingMenu editor={editor} />
 
@@ -1134,10 +1224,11 @@ const EditorV2Inner = ({
           )}
         </section>
 
-        <aside className="rounded-3xl border border-ink-100 bg-paper-50/80 p-4 text-sm text-ink-700">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-ink-900">属性面板</span>
-          </div>
+        {showPropsPanel && (
+          <aside className="rounded-3xl border border-ink-100 bg-paper-50/80 p-3 text-sm text-ink-700">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-ink-900">属性面板</span>
+            </div>
 
           {activeEntity.type === "truth" && (
             <div className="mt-4 grid gap-3">
@@ -1301,7 +1392,8 @@ const EditorV2Inner = ({
               </pre>
             </div>
           )}
-        </aside>
+          </aside>
+        )}
       </div>
     </div>
   );

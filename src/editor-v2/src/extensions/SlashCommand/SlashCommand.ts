@@ -23,6 +23,9 @@ export const SlashCommand = /* @__PURE__ */ Extension.create<any>({
   // },
 
   addProseMirrorPlugins() {
+const MIN_MENU_VISIBLE_MS = 3000;
+    let closeMenu: (() => void) | null = null;
+
     return [
       Suggestion({
         pluginKey: new PluginKey('richtextSlashCommandPlugin'),
@@ -55,16 +58,45 @@ export const SlashCommand = /* @__PURE__ */ Extension.create<any>({
           const { view } = editor;
           props.action({ editor, range });
           view.focus();
+          if (closeMenu) {
+            closeMenu();
+          }
         },
 
         render: () => {
           let reactRenderer: any;
+          let exitTimer: number | null = null;
+          let openedAt = 0;
+
+          const clearExitTimer = () => {
+            if (exitTimer) {
+              window.clearTimeout(exitTimer);
+              exitTimer = null;
+            }
+          };
+
+          const destroy = () => {
+            if (!reactRenderer) {
+              return;
+            }
+            reactRenderer.destroy();
+            reactRenderer.element.remove();
+            reactRenderer = null;
+          };
+
+          closeMenu = () => {
+            clearExitTimer();
+            destroy();
+          };
 
           return {
             onStart: (props: any) => {
               if (!props.clientRect) {
                 return;
               }
+
+              openedAt = Date.now();
+              clearExitTimer();
 
               reactRenderer = new ReactRenderer(SlashCommandNodeView, {
                 props,
@@ -79,6 +111,7 @@ export const SlashCommand = /* @__PURE__ */ Extension.create<any>({
             },
 
             onUpdate(props) {
+              clearExitTimer();
               reactRenderer.updateProps(props);
 
               if (!props.clientRect) {
@@ -89,8 +122,7 @@ export const SlashCommand = /* @__PURE__ */ Extension.create<any>({
 
             onKeyDown(props) {
               if (props.event.key === 'Escape') {
-                reactRenderer.destroy();
-                reactRenderer.element.remove();
+                destroy();
 
                 return true;
               }
@@ -102,8 +134,13 @@ export const SlashCommand = /* @__PURE__ */ Extension.create<any>({
               if (!reactRenderer) {
                 return;
               }
-              reactRenderer.destroy();
-              reactRenderer.element.remove();
+              const elapsed = Date.now() - openedAt;
+              const delay = Math.max(0, MIN_MENU_VISIBLE_MS - elapsed);
+              clearExitTimer();
+              exitTimer = window.setTimeout(() => {
+                destroy();
+                exitTimer = null;
+              }, delay);
             },
           };
         },

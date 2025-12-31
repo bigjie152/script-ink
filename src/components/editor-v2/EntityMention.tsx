@@ -23,10 +23,34 @@ type EntityMentionSuggestion = {
 
 const renderList = () => {
   let reactRenderer: ReactRenderer | null = null;
+  let exitTimer: number | null = null;
+  let openedAt = 0;
+const MIN_MENU_VISIBLE_MS = 3000;
+
+  const clearExitTimer = () => {
+    if (exitTimer) {
+      window.clearTimeout(exitTimer);
+      exitTimer = null;
+    }
+  };
+
+  const destroy = () => {
+    if (!reactRenderer) return;
+    reactRenderer.destroy();
+    reactRenderer.element.remove();
+    reactRenderer = null;
+  };
+  const closeNow = () => {
+    clearExitTimer();
+    destroy();
+  };
 
   return {
     onStart: (props: SuggestionProps<EntityMentionItem, EntityMentionItem>) => {
       if (!props.clientRect?.()) return;
+
+      openedAt = Date.now();
+      clearExitTimer();
 
       reactRenderer = new ReactRenderer(NodeViewMentionList, {
         props,
@@ -39,17 +63,14 @@ const renderList = () => {
     },
     onUpdate(props: SuggestionProps<EntityMentionItem, EntityMentionItem>) {
       if (!reactRenderer) return;
+      clearExitTimer();
       reactRenderer.updateProps(props);
       if (!props.clientRect?.()) return;
       updatePosition(props.editor, reactRenderer.element);
     },
     onKeyDown(props: SuggestionKeyDownProps) {
       if (props.event.key === "Escape") {
-        if (reactRenderer) {
-          reactRenderer.destroy();
-          reactRenderer.element.remove();
-          reactRenderer = null;
-        }
+        closeNow();
         return true;
       }
       const handler = (reactRenderer?.ref as { onKeyDown?: (args: SuggestionKeyDownProps) => boolean })
@@ -57,12 +78,16 @@ const renderList = () => {
       return handler ? handler(props) : false;
     },
     onExit() {
-      if (reactRenderer) {
-        reactRenderer.destroy();
-        reactRenderer.element.remove();
-        reactRenderer = null;
-      }
+      if (!reactRenderer) return;
+      const elapsed = Date.now() - openedAt;
+      const delay = Math.max(0, MIN_MENU_VISIBLE_MS - elapsed);
+      clearExitTimer();
+      exitTimer = window.setTimeout(() => {
+        destroy();
+        exitTimer = null;
+      }, delay);
     },
+    closeNow,
   };
 };
 
@@ -120,6 +145,7 @@ export const EntityMention = Node.create({
 
   addProseMirrorPlugins() {
     const suggestions = this.options.suggestions as EntityMentionSuggestion[];
+    let closeMenu: (() => void) | null = null;
 
     return suggestions.map((suggestion, index) =>
       Suggestion({
@@ -141,8 +167,19 @@ export const EntityMention = Node.create({
               },
             })
             .run();
+          if (closeMenu) {
+            closeMenu();
+          }
         },
-        render: renderList,
+        render: () => {
+          const list = renderList();
+          closeMenu = () => {
+            if (typeof (list as { closeNow?: () => void }).closeNow === "function") {
+              (list as { closeNow: () => void }).closeNow();
+            }
+          };
+          return list;
+        },
       })
     );
   },
