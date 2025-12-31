@@ -230,16 +230,18 @@ const RichTextToolbar = ({ wordToolbar }: { wordToolbar?: WordToolbarComponents 
   );
 };
 
-export const EditorV2 = ({ scriptId }: { scriptId: string }) => {
+const EditorV2Inner = ({
+  scriptId,
+  wordTools,
+}: {
+  scriptId: string;
+  wordTools: WordToolsState;
+}) => {
   const [entities, setEntities] = useState<ScriptEntity[]>([]);
   const [activeEntityId, setActiveEntityId] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [showJson, setShowJson] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [wordTools, setWordTools] = useState<WordToolsState>({
-    extensions: [],
-    toolbar: {},
-  });
   const isSwitchingRef = useRef(false);
   const activeEntityRef = useRef<ScriptEntity | null>(null);
 
@@ -273,34 +275,6 @@ export const EditorV2 = ({ scriptId }: { scriptId: string }) => {
   useEffect(() => {
     activeEntityRef.current = activeEntity;
   }, [activeEntity]);
-
-  useEffect(() => {
-    let isMounted = true;
-    const loadWordTools = async () => {
-      try {
-        const [importWordModule, exportWordModule] = await Promise.all([
-          import("@editor-v2/extensions/ImportWord"),
-          import("@editor-v2/extensions/ExportWord"),
-        ]);
-        if (!isMounted) return;
-        setWordTools({
-          extensions: [importWordModule.ImportWord, exportWordModule.ExportWord],
-          toolbar: {
-            ImportWord: importWordModule.RichTextImportWord,
-            ExportWord: exportWordModule.RichTextExportWord,
-          },
-        });
-      } catch (error) {
-        console.error("Failed to load Word tools", error);
-      }
-    };
-
-    loadWordTools();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   const baseExtensions = useMemo(
     () => [
@@ -891,4 +865,45 @@ export const EditorV2 = ({ scriptId }: { scriptId: string }) => {
       </div>
     </div>
   );
+};
+
+export const EditorV2 = ({ scriptId }: { scriptId: string }) => {
+  const [wordTools, setWordTools] = useState<WordToolsState | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadWordTools = async () => {
+      try {
+        const [importWordModule, exportWordModule] = await Promise.all([
+          import("@editor-v2/extensions/ImportWord"),
+          import("@editor-v2/extensions/ExportWord"),
+        ]);
+        if (!isMounted) return;
+        setWordTools({
+          extensions: [importWordModule.ImportWord, exportWordModule.ExportWord],
+          toolbar: {
+            ImportWord: importWordModule.RichTextImportWord,
+            ExportWord: exportWordModule.RichTextExportWord,
+          },
+        });
+      } catch (error) {
+        console.error("Failed to load Word tools", error);
+        if (isMounted) {
+          setWordTools({ extensions: [], toolbar: {} });
+        }
+      }
+    };
+
+    loadWordTools();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (!wordTools) {
+    return <div className="text-sm text-ink-600">编辑器加载中...</div>;
+  }
+
+  return <EditorV2Inner scriptId={scriptId} wordTools={wordTools} />;
 };
