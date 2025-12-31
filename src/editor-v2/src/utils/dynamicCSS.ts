@@ -116,8 +116,16 @@ export function injectCSS(css: string, option: Options = {}) {
         const lastStyle = existStyle.at(-1);
         const referenceNode = lastStyle?.nextSibling ?? null;
         if (lastStyle && contains(container as any, lastStyle)) {
-          // @ts-ignore
-          container.insertBefore(styleNode, referenceNode);
+          if (referenceNode && referenceNode.parentNode !== container) {
+            container.appendChild(styleNode);
+          } else {
+            try {
+              // @ts-ignore
+              container.insertBefore(styleNode, referenceNode);
+            } catch {
+              container.appendChild(styleNode);
+            }
+          }
         } else {
           container.appendChild(styleNode);
         }
@@ -127,8 +135,12 @@ export function injectCSS(css: string, option: Options = {}) {
     }
 
     // Use `insertBefore` as `prepend`
-    if (firstChild) {
-      firstChild.before(styleNode);
+    if (firstChild && (firstChild as any).parentNode === container) {
+      try {
+        firstChild.before(styleNode);
+      } catch {
+        container.appendChild(styleNode);
+      }
     } else {
       container.appendChild(styleNode);
     }
