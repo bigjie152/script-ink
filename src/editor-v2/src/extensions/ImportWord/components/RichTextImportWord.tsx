@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import { useRef, useState } from 'react';
 
-import mammoth from 'mammoth';
-
 import { ActionButton, useToast } from '@editor-v2/components';
 import { ImportWord } from '@editor-v2/extensions/ImportWord/ImportWord';
 import { useToggleActive } from '@editor-v2/hooks/useActive';
@@ -106,6 +104,8 @@ export function RichTextImportWord() {
         const result = await convert(importFile);
         handleResult(result);
       } else {
+        const mammothModule = await import('mammoth');
+        const mammoth = mammothModule.default ?? mammothModule;
         const arrayBuffer = await importFile.arrayBuffer();
         // TODO: add messages
         const { value } = await mammoth.convertToHtml(

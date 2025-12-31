@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import { Extension } from '@tiptap/core';
-import { Packer, WidthType } from 'docx';
-import { DocxSerializer, defaultMarks, defaultNodes } from 'prosemirror-docx';
 
 import type { GeneralOptions } from '@editor-v2/types';
 import { downloadFromBlob } from '@editor-v2/utils/download';
@@ -15,36 +13,7 @@ declare module '@tiptap/core' {
 }
 interface ExportWordOptions extends GeneralOptions<ExportWordOptions> {}
 
-const nodeSerializer = {
-  ...defaultNodes,
-  hardBreak: defaultNodes.hard_break,
-  codeBlock: defaultNodes.code_block,
-  orderedList: defaultNodes.ordered_list,
-  listItem: defaultNodes.list_item,
-  bulletList: defaultNodes.bullet_list,
-  horizontalRule: defaultNodes.horizontal_rule,
-  // Requirement Buffer on browser
-  image(state: any, node: any) {
-    // No image
-    state.renderInline(node);
-    state.closeBlock(node);
-  },
-  table(state: any, node: any) {
-    state.table(node, {
-      tableOptions: {
-        width: {
-          size: 100,
-          type: WidthType.PERCENTAGE,
-        },
-      },
-    });
-  },
-};
-
 export * from './components/RichTextExportWord';
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const docxSerializer = /* @__PURE__ */ new DocxSerializer(nodeSerializer, defaultMarks);
 
 export const ExportWord = /* @__PURE__ */ Extension.create<ExportWordOptions>({
   name: 'exportWord',
@@ -81,9 +50,43 @@ export const ExportWord = /* @__PURE__ */ Extension.create<ExportWordOptions>({
                 },
               };
 
-              const wordDocument = docxSerializer.serialize(docState as any, opts);
+              const [docxModule, pmDocxModule] = await Promise.all([
+                import('docx'),
+                import('prosemirror-docx'),
+              ]);
 
-              Packer.toBlob(wordDocument).then((blob: any) => downloadFromBlob(new Blob([blob]), 'richtext-export-document.docx'));
+              const { Packer, WidthType } = docxModule;
+              const { DocxSerializer, defaultMarks, defaultNodes } = pmDocxModule;
+              const nodeSerializer = {
+                ...defaultNodes,
+                hardBreak: defaultNodes.hard_break,
+                codeBlock: defaultNodes.code_block,
+                orderedList: defaultNodes.ordered_list,
+                listItem: defaultNodes.list_item,
+                bulletList: defaultNodes.bullet_list,
+                horizontalRule: defaultNodes.horizontal_rule,
+                // Requirement Buffer on browser
+                image(state: any, node: any) {
+                  // No image
+                  state.renderInline(node);
+                  state.closeBlock(node);
+                },
+                table(state: any, node: any) {
+                  state.table(node, {
+                    tableOptions: {
+                      width: {
+                        size: 100,
+                        type: WidthType.PERCENTAGE,
+                      },
+                    },
+                  });
+                },
+              };
+
+              const docxSerializer = /* @__PURE__ */ new DocxSerializer(nodeSerializer, defaultMarks);
+              const wordDocument = docxSerializer.serialize(docState as any, opts);
+              const blob = await Packer.toBlob(wordDocument);
+              downloadFromBlob(new Blob([blob]), 'richtext-export-document.docx');
               return true;
             } catch (error) {
               console.error('Error exporting to Word:', error);

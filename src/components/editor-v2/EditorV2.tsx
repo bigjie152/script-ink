@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ComponentType } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import type { Extension } from "@tiptap/core";
 
 import { Document } from "@tiptap/extension-document";
 import { Text } from "@tiptap/extension-text";
@@ -45,8 +47,6 @@ import { Column, ColumnNode, MultipleColumnNode, RichTextColumn } from "@editor-
 import { Table, RichTextTable } from "@editor-v2/extensions/Table";
 import { Iframe, RichTextIframe } from "@editor-v2/extensions/Iframe";
 import { ExportPdf, RichTextExportPdf } from "@editor-v2/extensions/ExportPdf";
-import { ImportWord, RichTextImportWord } from "@editor-v2/extensions/ImportWord";
-import { ExportWord, RichTextExportWord } from "@editor-v2/extensions/ExportWord";
 import { TextDirection, RichTextTextDirection } from "@editor-v2/extensions/TextDirection";
 import { Attachment, RichTextAttachment } from "@editor-v2/extensions/Attachment";
 import { Katex, RichTextKatex } from "@editor-v2/extensions/Katex";
@@ -85,6 +85,16 @@ const STORAGE_PREFIX = "script:editor-v2";
 const EMPTY_DOC = {
   type: "doc",
   content: [{ type: "paragraph" }],
+};
+
+type WordToolbarComponents = {
+  ImportWord?: ComponentType;
+  ExportWord?: ComponentType;
+};
+
+type WordToolsState = {
+  extensions: Extension[];
+  toolbar: WordToolbarComponents;
 };
 
 const ENTITY_LABELS: Record<EntityType, string> = {
@@ -167,7 +177,10 @@ const filterItems = (items: EntityMentionItem[], query: string) => {
   return items.filter((item) => item.label.toLowerCase().includes(keyword));
 };
 
-const RichTextToolbar = () => {
+const RichTextToolbar = ({ wordToolbar }: { wordToolbar?: WordToolbarComponents }) => {
+  const ImportWordButton = wordToolbar?.ImportWord;
+  const ExportWordButton = wordToolbar?.ExportWord;
+
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-solid border-ink-100/70 bg-paper-50/80 px-2 py-2">
       <RichTextUndo />
@@ -203,8 +216,8 @@ const RichTextToolbar = () => {
       <RichTextTable />
       <RichTextIframe />
       <RichTextExportPdf />
-      <RichTextImportWord />
-      <RichTextExportWord />
+      {ImportWordButton && <ImportWordButton />}
+      {ExportWordButton && <ExportWordButton />}
       <RichTextTextDirection />
       <RichTextAttachment />
       <RichTextKatex />
@@ -223,6 +236,10 @@ export const EditorV2 = ({ scriptId }: { scriptId: string }) => {
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [showJson, setShowJson] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [wordTools, setWordTools] = useState<WordToolsState>({
+    extensions: [],
+    toolbar: {},
+  });
   const isSwitchingRef = useRef(false);
   const activeEntityRef = useRef<ScriptEntity | null>(null);
 
@@ -257,7 +274,35 @@ export const EditorV2 = ({ scriptId }: { scriptId: string }) => {
     activeEntityRef.current = activeEntity;
   }, [activeEntity]);
 
-  const extensions = useMemo(
+  useEffect(() => {
+    let isMounted = true;
+    const loadWordTools = async () => {
+      try {
+        const [importWordModule, exportWordModule] = await Promise.all([
+          import("@editor-v2/extensions/ImportWord"),
+          import("@editor-v2/extensions/ExportWord"),
+        ]);
+        if (!isMounted) return;
+        setWordTools({
+          extensions: [importWordModule.ImportWord, exportWordModule.ExportWord],
+          toolbar: {
+            ImportWord: importWordModule.RichTextImportWord,
+            ExportWord: exportWordModule.RichTextExportWord,
+          },
+        });
+      } catch (error) {
+        console.error("Failed to load Word tools", error);
+      }
+    };
+
+    loadWordTools();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const baseExtensions = useMemo(
     () => [
       Document.extend({ content: "(block|columns)+" }),
       Text,
@@ -322,8 +367,6 @@ export const EditorV2 = ({ scriptId }: { scriptId: string }) => {
       Table,
       Iframe,
       ExportPdf,
-      ImportWord,
-      ExportWord,
       TextDirection,
       Attachment.configure({
         upload: (file: File) =>
@@ -356,23 +399,31 @@ export const EditorV2 = ({ scriptId }: { scriptId: string }) => {
     []
   );
 
-  const editor = useEditor({
-    extensions,
-    content: EMPTY_DOC,
-    editorProps: {
-      attributes: {
-        class: "min-h-[520px] px-4 py-4 focus:outline-none",
+  const extensions = useMemo(
+    () => [...baseExtensions, ...wordTools.extensions],
+    [baseExtensions, wordTools.extensions]
+  );
+
+  const editor = useEditor(
+    {
+      extensions,
+      content: EMPTY_DOC,
+      editorProps: {
+        attributes: {
+          class: "min-h-[520px] px-4 py-4 focus:outline-none",
+        },
+      },
+      onUpdate: ({ editor }) => {
+        const current = activeEntityRef.current;
+        if (!current || isSwitchingRef.current) return;
+        const content = editor.getJSON();
+        setEntities((prev) =>
+          prev.map((entity) => (entity.id === current.id ? { ...entity, content } : entity))
+        );
       },
     },
-    onUpdate: ({ editor }) => {
-      const current = activeEntityRef.current;
-      if (!current || isSwitchingRef.current) return;
-      const content = editor.getJSON();
-      setEntities((prev) =>
-        prev.map((entity) => (entity.id === current.id ? { ...entity, content } : entity))
-      );
-    },
-  });
+    [extensions]
+  );
 
   useEffect(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem(getStorageKey(scriptId)) : null;
@@ -646,7 +697,7 @@ export const EditorV2 = ({ scriptId }: { scriptId: string }) => {
           {editor && (
             <RichTextProvider editor={editor}>
               <div className="flex max-h-full w-full flex-col">
-                <RichTextToolbar />
+                <RichTextToolbar wordToolbar={wordTools.toolbar} />
                 <EditorContent editor={editor} />
 
                 <RichTextBubbleColumns />
