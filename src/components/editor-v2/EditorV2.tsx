@@ -855,7 +855,9 @@ const EditorV2Inner = ({
     if (!editor || !activeEntity) return;
     isSwitchingRef.current = true;
     editor.commands.setContent(activeEntity.content ?? EMPTY_DOC, { emitUpdate: false });
-    editor.commands.focus("end");
+    if (editor.view) {
+      editor.commands.focus("end");
+    }
     isSwitchingRef.current = false;
   }, [editor, activeEntity]);
 
