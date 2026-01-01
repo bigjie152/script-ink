@@ -208,7 +208,7 @@ export function RichTextBubbleMenuDragHandle() {
           action={handleAdd}
           disabled={!editable}
           icon='Plus'
-          tooltip='插入块'
+          tooltip='插入�?
         />
 
         <ActionButton
@@ -376,4 +376,3 @@ export function RichTextBubbleMenuDragHandle() {
     </DragHandle>
   );
 }
-

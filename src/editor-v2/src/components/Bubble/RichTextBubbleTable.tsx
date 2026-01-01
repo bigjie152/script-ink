@@ -19,7 +19,7 @@ function RichTextBubbleTable({ hiddenActions = [] }: RichTextBubbleTableProps) {
   const editor = useEditorInstance();
 
   const shouldShow = ({ editor }: { editor: Editor }) => {
-    return isActive(editor.view.state, Table.name);
+    return isActive(editor.state, Table.name);
   };
 
   const isHidden = (key: string) => hiddenActions.includes(key);
@@ -190,4 +190,3 @@ function RichTextBubbleTable({ hiddenActions = [] }: RichTextBubbleTableProps) {
 }
 
 export { RichTextBubbleTable };
-

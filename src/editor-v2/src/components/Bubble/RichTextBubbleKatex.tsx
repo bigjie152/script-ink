@@ -192,4 +192,3 @@ export function RichTextBubbleKatex() {
     </BubbleMenu>
   );
 }
-

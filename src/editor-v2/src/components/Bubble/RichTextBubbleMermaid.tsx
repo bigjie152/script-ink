@@ -52,11 +52,11 @@ export function RichTextBubbleMermaid() {
   const extension = useExtension(Mermaid.name);
 
   const shouldShow = ({ editor }: any) => {
-    const { selection } = editor.view.state;
+    const { selection } = editor.state;
     const { $from, to } = selection;
     let isMermaid = false;
 
-    editor.view.state.doc.nodesBetween($from.pos, to, (node: any) => {
+    editor.state.doc.nodesBetween($from.pos, to, (node: any) => {
       if (isMermaidNode(node)) {
         isMermaid = true;
         return false; // Stop iteration if an mermaid is found
@@ -113,4 +113,3 @@ export function RichTextBubbleMermaid() {
     </BubbleMenu>
   );
 }
-
