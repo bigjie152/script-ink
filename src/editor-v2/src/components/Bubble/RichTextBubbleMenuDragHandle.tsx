@@ -35,6 +35,10 @@ export function RichTextBubbleMenuDragHandle() {
   const [menuOpen, setMenuOpen] = useState(false);
   const lastHandlePosRef = useRef<number | null>(null);
 
+  if (!editor || editor.isDestroyed) {
+    return null;
+  }
+
   const hasTextAlignExtension = editor?.extensionManager?.extensions?.some((ext: any) => ext?.name === TextAlign.name);
   const hasIndentExtension = editor?.extensionManager?.extensions?.some((ext: any) => ext?.name === Indent.name);
   const hasClearExtension = editor?.extensionManager?.extensions?.some((ext: any) => ext?.name === Clear.name);
@@ -90,13 +94,22 @@ export function RichTextBubbleMenuDragHandle() {
     editor: Editor;
     pos: number
   }) => {
+    if (!data.editor || data.editor.isDestroyed) {
+      return;
+    }
     if (data.node) {
       setCurrentNode(data.node);
     }
     setCurrentNodePos(data.pos);
     // Force update bubble menu position
     requestAnimationFrame(() => {
-      data.editor.commands.focus();
+      try {
+        if (!data.editor.isDestroyed) {
+          data.editor.commands.focus();
+        }
+      } catch {
+        // Editor view may not be ready yet.
+      }
     });
   }, []);
 
@@ -153,6 +166,9 @@ export function RichTextBubbleMenuDragHandle() {
   };
 
   useEffect(() => {
+    if (!editor || editor.isDestroyed) {
+      return;
+    }
     if (menuOpen) {
       editor.commands.setMeta('lockDragHandle', true);
     } else {
@@ -160,6 +176,9 @@ export function RichTextBubbleMenuDragHandle() {
     }
 
     return () => {
+      if (!editor || editor.isDestroyed) {
+        return;
+      }
       editor.commands.setMeta('lockDragHandle', false);
     };
   }, [menuOpen]);
