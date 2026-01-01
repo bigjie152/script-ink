@@ -70,8 +70,14 @@ export const SlashCommand = /* @__PURE__ */ Extension.create<any>({
             if (!reactRenderer) {
               return;
             }
-            reactRenderer.destroy();
-            reactRenderer.element.remove();
+            try {
+              reactRenderer.destroy();
+            } catch {
+              // Ignore teardown errors.
+            }
+            if (reactRenderer.element?.isConnected) {
+              reactRenderer.element.remove();
+            }
             reactRenderer = null;
           };
 
@@ -132,17 +138,20 @@ export const SlashCommand = /* @__PURE__ */ Extension.create<any>({
 
               document.body.appendChild(reactRenderer.element);
 
-              updatePosition(props.editor, reactRenderer.element);
+              updatePosition(props.editor, reactRenderer.element, props.clientRect);
             },
 
             onUpdate(props) {
+              if (!reactRenderer) {
+                return;
+              }
               lastProps = props;
               reactRenderer.updateProps(props);
 
               if (!props.clientRect) {
                 return;
               }
-              updatePosition(props.editor, reactRenderer.element);
+              updatePosition(props.editor, reactRenderer.element, props.clientRect);
             },
 
             onKeyDown(props) {

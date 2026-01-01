@@ -84,8 +84,14 @@ const renderList = () => {
 
   const destroy = () => {
     if (!reactRenderer) return;
-    reactRenderer.destroy();
-    reactRenderer.element.remove();
+    try {
+      reactRenderer.destroy();
+    } catch {
+      // Ignore teardown errors.
+    }
+    if (reactRenderer.element?.isConnected) {
+      reactRenderer.element.remove();
+    }
     reactRenderer = null;
   };
   const closeNow = () => {
@@ -125,7 +131,7 @@ const renderList = () => {
 
   return {
     onStart: (props: SuggestionProps<EntityMentionItem, EntityMentionItem>) => {
-      if (!props.clientRect?.()) return;
+      if (!props.clientRect) return;
 
       lastProps = props;
 
@@ -136,14 +142,14 @@ const renderList = () => {
 
       reactRenderer.element.style.position = "absolute";
       document.body.appendChild(reactRenderer.element);
-      updatePosition(props.editor, reactRenderer.element);
+      updatePosition(props.editor, reactRenderer.element, props.clientRect);
     },
     onUpdate(props: SuggestionProps<EntityMentionItem, EntityMentionItem>) {
       if (!reactRenderer) return;
       lastProps = props;
       reactRenderer.updateProps(props);
-      if (!props.clientRect?.()) return;
-      updatePosition(props.editor, reactRenderer.element);
+      if (!props.clientRect) return;
+      updatePosition(props.editor, reactRenderer.element, props.clientRect);
     },
     onKeyDown(props: SuggestionKeyDownProps) {
       if (props.event.key === "Escape") {
