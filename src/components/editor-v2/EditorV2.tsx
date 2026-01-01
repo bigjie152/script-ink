@@ -16,50 +16,49 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import { ListItem } from "@tiptap/extension-list";
 import { Dropcursor, Gapcursor, Placeholder, TrailingNode } from "@tiptap/extensions";
 
-import { RichTextProvider } from "@editor-v2/components";
+import { ActionButton, RichTextProvider } from "@editor-v2/components";
 import { SlashCommand, SlashCommandList } from "@editor-v2/extensions/SlashCommand";
-import { History } from "@editor-v2/extensions/History";
-import { SearchAndReplace } from "@editor-v2/extensions/SearchAndReplace";
-import { Clear } from "@editor-v2/extensions/Clear";
-import { FontFamily } from "@editor-v2/extensions/FontFamily";
-import { Heading } from "@editor-v2/extensions/Heading";
-import { FontSize } from "@editor-v2/extensions/FontSize";
+import type { CommandList } from "@editor-v2/extensions/SlashCommand/types";
+import { History, RichTextRedo, RichTextUndo } from "@editor-v2/extensions/History";
+import { SearchAndReplace, RichTextSearchAndReplace } from "@editor-v2/extensions/SearchAndReplace";
+import { Clear, RichTextClear } from "@editor-v2/extensions/Clear";
+import { FontFamily, RichTextFontFamily } from "@editor-v2/extensions/FontFamily";
+import { Heading, RichTextHeading } from "@editor-v2/extensions/Heading";
+import { FontSize, RichTextFontSize } from "@editor-v2/extensions/FontSize";
 import { Bold, RichTextBold } from "@editor-v2/extensions/Bold";
 import { Italic, RichTextItalic } from "@editor-v2/extensions/Italic";
 import { TextUnderline, RichTextUnderline } from "@editor-v2/extensions/TextUnderline";
 import { Strike, RichTextStrike } from "@editor-v2/extensions/Strike";
-import { MoreMark } from "@editor-v2/extensions/MoreMark";
-import { Emoji } from "@editor-v2/extensions/Emoji";
-import { Color } from "@editor-v2/extensions/Color";
-import { Highlight } from "@editor-v2/extensions/Highlight";
-import { BulletList } from "@editor-v2/extensions/BulletList";
-import { OrderedList } from "@editor-v2/extensions/OrderedList";
-import { TextAlign } from "@editor-v2/extensions/TextAlign";
-import { Indent } from "@editor-v2/extensions/Indent";
-import { LineHeight } from "@editor-v2/extensions/LineHeight";
-import { TaskList } from "@editor-v2/extensions/TaskList";
+import { MoreMark, RichTextMoreMark } from "@editor-v2/extensions/MoreMark";
+import { Emoji, RichTextEmoji } from "@editor-v2/extensions/Emoji";
+import { Color, RichTextColor } from "@editor-v2/extensions/Color";
+import { Highlight, RichTextHighlight } from "@editor-v2/extensions/Highlight";
+import { BulletList, RichTextBulletList } from "@editor-v2/extensions/BulletList";
+import { OrderedList, RichTextOrderedList } from "@editor-v2/extensions/OrderedList";
+import { TextAlign, RichTextAlign } from "@editor-v2/extensions/TextAlign";
+import { Indent, RichTextIndent } from "@editor-v2/extensions/Indent";
+import { LineHeight, RichTextLineHeight } from "@editor-v2/extensions/LineHeight";
+import { TaskList, RichTextTaskList } from "@editor-v2/extensions/TaskList";
 import { Link, RichTextLink } from "@editor-v2/extensions/Link";
-import { Image } from "@editor-v2/extensions/Image";
-import { Video } from "@editor-v2/extensions/Video";
-import { ImageGif } from "@editor-v2/extensions/ImageGif";
-import { Blockquote } from "@editor-v2/extensions/Blockquote";
-import { Callout } from "@editor-v2/extensions/Callout";
-import { HorizontalRule } from "@editor-v2/extensions/HorizontalRule";
+import { Image, RichTextImage } from "@editor-v2/extensions/Image";
+import { Video, RichTextVideo } from "@editor-v2/extensions/Video";
+import { ImageGif, RichTextImageGif } from "@editor-v2/extensions/ImageGif";
+import { Blockquote, RichTextBlockquote } from "@editor-v2/extensions/Blockquote";
+import { HorizontalRule, RichTextHorizontalRule } from "@editor-v2/extensions/HorizontalRule";
 import { Code, RichTextCode } from "@editor-v2/extensions/Code";
-import { CodeBlock } from "@editor-v2/extensions/CodeBlock";
-import { Column, ColumnNode, MultipleColumnNode } from "@editor-v2/extensions/Column";
-import { Table } from "@editor-v2/extensions/Table";
-import { Iframe } from "@editor-v2/extensions/Iframe";
-import { ExportPdf } from "@editor-v2/extensions/ExportPdf";
-import { TextDirection } from "@editor-v2/extensions/TextDirection";
-import { Attachment } from "@editor-v2/extensions/Attachment";
-import { Katex } from "@editor-v2/extensions/Katex";
-import { Excalidraw } from "@editor-v2/extensions/Excalidraw";
-import { Mermaid } from "@editor-v2/extensions/Mermaid";
-import { Drawer } from "@editor-v2/extensions/Drawer";
-import { Twitter } from "@editor-v2/extensions/Twitter";
-import { CodeView } from "@editor-v2/extensions/CodeView";
-import { NotionKeymap } from "@editor-v2/extensions/NotionKeymap";
+import { CodeBlock, RichTextCodeBlock } from "@editor-v2/extensions/CodeBlock";
+import { Column, ColumnNode, MultipleColumnNode, RichTextColumn } from "@editor-v2/extensions/Column";
+import { Table, RichTextTable } from "@editor-v2/extensions/Table";
+import { Iframe, RichTextIframe } from "@editor-v2/extensions/Iframe";
+import { ExportPdf, RichTextExportPdf } from "@editor-v2/extensions/ExportPdf";
+import { TextDirection, RichTextTextDirection } from "@editor-v2/extensions/TextDirection";
+import { Attachment, RichTextAttachment } from "@editor-v2/extensions/Attachment";
+import { Katex, RichTextKatex } from "@editor-v2/extensions/Katex";
+import { Excalidraw, RichTextExcalidraw } from "@editor-v2/extensions/Excalidraw";
+import { Mermaid, RichTextMermaid } from "@editor-v2/extensions/Mermaid";
+import { Drawer, RichTextDrawer } from "@editor-v2/extensions/Drawer";
+import { Twitter, RichTextTwitter } from "@editor-v2/extensions/Twitter";
+import { CodeView, RichTextCodeView } from "@editor-v2/extensions/CodeView";
 import {
   RichTextBubbleColumns,
   RichTextBubbleDrawer,
@@ -189,47 +188,82 @@ const filterItems = (items: EntityMentionItem[], query: string) => {
 };
 
 type RichTextToolbarProps = {
+  wordToolbar?: WordToolbarComponents;
   onSave: () => void;
   onToggleJson: () => void;
   showJson: boolean;
   saveStatus: SaveStatus;
   previewHref: string;
-  statusText: string;
-  showRetry: boolean;
 };
 
 const RichTextToolbar = ({
+  wordToolbar,
   onSave,
   onToggleJson,
   showJson,
   saveStatus,
   previewHref,
-  statusText,
-  showRetry,
 }: RichTextToolbarProps) => {
+  const ImportWordButton = wordToolbar?.ImportWord;
+  const ExportWordButton = wordToolbar?.ExportWord;
   const saveLabel = saveStatus === "saving" ? "保存中…" : "保存";
 
   return (
-    <div className="editor-v2-topbar">
-      <div className="editor-v2-topbar-status">
-        <span>{statusText || " "}</span>
-        {showRetry && (
-          <button type="button" className="editor-v2-topbar-retry" onClick={onSave}>
-            点击重试
-          </button>
-        )}
-      </div>
-      <div className="editor-v2-topbar-actions">
+    <div className="flex items-center gap-1 overflow-x-auto border-b border-solid border-ink-100/70 bg-paper-50/80 px-2 py-1">
+      <RichTextUndo />
+      <RichTextRedo />
+      <RichTextSearchAndReplace />
+      <RichTextClear />
+      <RichTextFontFamily />
+      <RichTextHeading />
+      <RichTextFontSize />
+      <RichTextBold />
+      <RichTextItalic />
+      <RichTextUnderline />
+      <RichTextStrike />
+      <RichTextMoreMark />
+      <RichTextEmoji />
+      <RichTextColor />
+      <RichTextHighlight />
+      <RichTextBulletList />
+      <RichTextOrderedList />
+      <RichTextAlign />
+      <RichTextIndent />
+      <RichTextLineHeight />
+      <RichTextTaskList />
+      <RichTextLink />
+      <RichTextImage />
+      <RichTextVideo />
+      <RichTextImageGif />
+      <RichTextBlockquote />
+      <RichTextHorizontalRule />
+      <RichTextCode />
+      <RichTextCodeBlock />
+      <RichTextColumn />
+      <RichTextTable />
+      <RichTextIframe />
+      <RichTextExportPdf />
+      {ImportWordButton && <ImportWordButton />}
+      {ExportWordButton && <ExportWordButton />}
+      <RichTextTextDirection />
+      <RichTextAttachment />
+      <RichTextKatex />
+      <RichTextExcalidraw />
+      <RichTextMermaid />
+      <RichTextDrawer />
+      <RichTextTwitter />
+      <RichTextCodeView />
+      <div className="ml-auto flex items-center gap-2 pl-2">
         <Button
           type="button"
           onClick={onSave}
           disabled={saveStatus === "saving"}
-          className="editor-v2-topbar-button"
+          className="px-3 py-1 text-xs"
         >
           {saveLabel}
         </Button>
         <NextLink href={previewHref}>
-          <Button variant="outline" type="button" className="editor-v2-topbar-button">
+          <Button variant="outline" type="button" className="px-3 py-1 text-xs">
             预览
           </Button>
         </NextLink>
@@ -237,7 +271,7 @@ const RichTextToolbar = ({
           variant="outline"
           type="button"
           onClick={onToggleJson}
-          className="editor-v2-topbar-button"
+          className="px-3 py-1 text-xs"
         >
           {showJson ? "隐藏 JSON" : "查看 JSON"}
         </Button>
@@ -250,7 +284,6 @@ const MinimalTextBubble = () => (
   <div className="richtext-flex richtext-items-center richtext-gap-1 richtext-rounded-md !richtext-border !richtext-border-solid !richtext-border-border richtext-bg-popover richtext-p-1 richtext-text-popover-foreground richtext-shadow-md richtext-outline-none">
     <RichTextBold />
     <RichTextItalic />
-    <RichTextUnderline />
     <RichTextStrike />
     <RichTextCode />
     <RichTextLink />
@@ -269,20 +302,34 @@ const EditorFloatingMenu = ({ editor }: { editor: Editor | null }) => {
     return isParagraph && isEmpty;
   };
 
-  const handleInsertCommand = () => {
-    editor.chain().focus().insertContent("/").run();
-  };
-
   return (
     <FloatingMenu
       editor={editor}
       shouldShow={shouldShow}
       options={{ offset: { mainAxis: 8, crossAxis: 0 }, placement: "right-start" }}
     >
-      <button type="button" className="notion-floating-plus" onClick={handleInsertCommand}>
-        <span className="notion-floating-plus-icon">+</span>
-        <span className="notion-floating-plus-text">添加内容</span>
-      </button>
+      <div className="richtext-flex richtext-items-center richtext-gap-1 richtext-rounded-md !richtext-border !richtext-border-solid !richtext-border-border richtext-bg-popover richtext-p-1 richtext-text-popover-foreground richtext-shadow-md">
+        <ActionButton
+          icon="Heading2"
+          tooltip="标题"
+          action={() => editor.chain().focus().setHeading({ level: 2 }).run()}
+        />
+        <ActionButton
+          icon="List"
+          tooltip="无序列表"
+          action={() => editor.chain().focus().toggleBulletList().run()}
+        />
+        <ActionButton
+          icon="ListOrdered"
+          tooltip="有序列表"
+          action={() => editor.chain().focus().toggleOrderedList().run()}
+        />
+        <ActionButton
+          icon="Minus"
+          tooltip="分隔线"
+          action={() => editor.chain().focus().setHorizontalRule().run()}
+        />
+      </div>
     </FloatingMenu>
   );
 };
@@ -311,14 +358,7 @@ const EditorV2Inner = ({
   const [isDirty, setIsDirty] = useState(false);
   const [showJson, setShowJson] = useState(false);
   const [showScriptMeta, setShowScriptMeta] = useState(false);
-  const [showPropsPanel, setShowPropsPanel] = useState(false);
-  const [sidebarQuery, setSidebarQuery] = useState("");
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<EntityType, boolean>>({
-    truth: false,
-    role: false,
-    clue: false,
-    flow_node: false,
-  });
+  const [showPropsPanel, setShowPropsPanel] = useState(true);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const isSwitchingRef = useRef(false);
@@ -327,8 +367,6 @@ const EditorV2Inner = ({
   const autoSaveIntervalRef = useRef<number | null>(null);
   const skipSaveRef = useRef(true);
   const wasOnlineRef = useRef(true);
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const pendingPanelFocusRef = useRef(false);
 
   const roleItemsRef = useRef<EntityMentionItem[]>([]);
   const clueItemsRef = useRef<EntityMentionItem[]>([]);
@@ -341,81 +379,86 @@ const EditorV2Inner = ({
   const roles = useMemo(() => entities.filter((entity) => entity.type === "role"), [entities]);
   const clues = useMemo(() => entities.filter((entity) => entity.type === "clue"), [entities]);
   const flowNodes = useMemo(() => entities.filter((entity) => entity.type === "flow_node"), [entities]);
-  const matchesSidebarQuery = useCallback(
-    (entity: ScriptEntity) => {
-      const keyword = sidebarQuery.trim().toLowerCase();
-      if (!keyword) return true;
-      return (entity.title || "").toLowerCase().includes(keyword);
-    },
-    [sidebarQuery]
+  const slashCommandList = useMemo<CommandList[]>(
+    () => [
+      {
+        name: "format",
+        title: "格式",
+        commands: [
+          {
+            name: "heading",
+            label: "标题",
+            aliases: ["h2", "bt", "biaoti"],
+            iconName: "Heading2",
+            action: ({ editor, range }) => {
+              editor.chain().focus().deleteRange(range).setHeading({ level: 2 }).run();
+            },
+          },
+          {
+            name: "bulletList",
+            label: "无序列表",
+            aliases: ["ul", "list"],
+            iconName: "List",
+            action: ({ editor, range }) => {
+              editor.chain().focus().deleteRange(range).toggleBulletList().run();
+            },
+          },
+          {
+            name: "orderedList",
+            label: "有序列表",
+            aliases: ["ol", "ordered"],
+            iconName: "ListOrdered",
+            action: ({ editor, range }) => {
+              editor.chain().focus().deleteRange(range).toggleOrderedList().run();
+            },
+          },
+          {
+            name: "blockquote",
+            label: "引用块",
+            aliases: ["quote", "yinyong"],
+            iconName: "TextQuote",
+            action: ({ editor, range }) => {
+              editor.chain().focus().deleteRange(range).setBlockquote().run();
+            },
+          },
+          {
+            name: "horizontalRule",
+            label: "分隔线",
+            aliases: ["hr", "divider"],
+            iconName: "Minus",
+            action: ({ editor, range }) => {
+              editor.chain().focus().deleteRange(range).setHorizontalRule().run();
+            },
+          },
+        ],
+      },
+      {
+        name: "insert",
+        title: "插入",
+        commands: [
+          {
+            name: "mentionRole",
+            label: "插入角色引用",
+            aliases: ["role", "@角色"],
+            iconName: "BookMarked",
+            action: ({ editor, range }) => {
+              editor.chain().focus().deleteRange(range).insertContent("@").run();
+            },
+          },
+          {
+            name: "mentionClue",
+            label: "插入线索引用",
+            aliases: ["clue", "#线索"],
+            iconName: "Sparkles",
+            action: ({ editor, range }) => {
+              editor.chain().focus().deleteRange(range).insertContent("#").run();
+            },
+          },
+        ],
+      },
+    ],
+    []
   );
-  const filteredRoles = useMemo(
-    () => roles.filter((entity) => matchesSidebarQuery(entity)),
-    [roles, matchesSidebarQuery]
-  );
-  const filteredClues = useMemo(
-    () => clues.filter((entity) => matchesSidebarQuery(entity)),
-    [clues, matchesSidebarQuery]
-  );
-  const filteredFlowNodes = useMemo(
-    () => flowNodes.filter((entity) => matchesSidebarQuery(entity)),
-    [flowNodes, matchesSidebarQuery]
-  );
-  const resolveMentionEntity = useCallback(
-    (entityId: string) => {
-      const entity = entities.find((item) => item.id === entityId);
-      if (!entity) return null;
-      const baseTitle = entity.title || DEFAULT_TITLES[entity.type];
-      if (entity.type === "role") {
-        const meta = [
-          entity.props?.secretLevel ? `秘密等级：${entity.props.secretLevel}` : "",
-          Array.isArray(entity.props?.tags) && entity.props.tags.length
-            ? `标签：${entity.props.tags.join(" / ")}`
-            : "",
-        ]
-          .filter(Boolean)
-          .join(" · ");
-        return {
-          id: entity.id,
-          title: baseTitle,
-          entityType: entity.type,
-          meta,
-        };
-      }
-      if (entity.type === "clue") {
-        const meta = [
-          entity.props?.clueType ? `类型：${entity.props.clueType}` : "",
-          entity.props?.isHidden ? "隐藏" : "公开",
-        ]
-          .filter(Boolean)
-          .join(" · ");
-        return {
-          id: entity.id,
-          title: baseTitle,
-          entityType: entity.type,
-          meta,
-        };
-      }
-      return {
-        id: entity.id,
-        title: baseTitle,
-        entityType: entity.type,
-      };
-    },
-    [entities]
-  );
-  const handleOpenMentionEntity = useCallback((entityId: string) => {
-    pendingPanelFocusRef.current = true;
-    setActiveEntityId(entityId);
-    setShowPropsPanel(true);
-  }, []);
-
-  const toggleGroup = useCallback((type: EntityType) => {
-    setCollapsedGroups((prev) => ({
-      ...prev,
-      [type]: !prev[type],
-    }));
-  }, []);
 
   useEffect(() => {
     roleItemsRef.current = roles.map((role) => ({
@@ -423,35 +466,14 @@ const EditorV2Inner = ({
       label: role.title || "未命名角色",
       entityId: role.id,
       entityType: "role",
-      meta: [
-        role.props?.secretLevel ? `秘密等级：${role.props.secretLevel}` : "",
-        Array.isArray(role.props?.tags) && role.props.tags.length
-          ? `标签：${role.props.tags.join(" / ")}`
-          : "",
-      ]
-        .filter(Boolean)
-        .join(" · "),
     }));
     clueItemsRef.current = clues.map((clue) => ({
       id: clue.id,
       label: clue.title || "未命名线索",
       entityId: clue.id,
       entityType: "clue",
-      meta: [
-        clue.props?.clueType ? `类型：${clue.props.clueType}` : "",
-        clue.props?.isHidden ? "隐藏" : "公开",
-      ]
-        .filter(Boolean)
-        .join(" · "),
     }));
   }, [roles, clues]);
-
-  useEffect(() => {
-    document.body.classList.add("editor-v2-body");
-    return () => {
-      document.body.classList.remove("editor-v2-body");
-    };
-  }, []);
 
   useEffect(() => {
     const online = typeof navigator !== "undefined" ? navigator.onLine : true;
@@ -483,30 +505,17 @@ const EditorV2Inner = ({
     activeEntityRef.current = activeEntity;
   }, [activeEntity]);
 
-  useEffect(() => {
-    if (!showPropsPanel || !panelRef.current || !pendingPanelFocusRef.current) {
-      return;
-    }
-    pendingPanelFocusRef.current = false;
-    const target = panelRef.current.querySelector("input, select, textarea, button");
-    if (target instanceof HTMLElement) {
-      target.focus();
-      target.scrollIntoView({ block: "center", behavior: "smooth" });
-    }
-  }, [activeEntityId, showPropsPanel]);
-
   const baseExtensions = useMemo(
     () => [
       Document.extend({ content: "(block|columns)+" }),
       Text,
       Dropcursor.configure({
         class: "reactjs-tiptap-editor-theme",
-        color: "#0b6ef6",
+        color: "hsl(var(--primary))",
         width: 2,
       }),
       Gapcursor,
       HardBreak,
-      NotionKeymap,
       Paragraph,
       TrailingNode,
       ListItem,
@@ -552,7 +561,6 @@ const EditorV2Inner = ({
         API_KEY: process.env.NEXT_PUBLIC_GIPHY_API_KEY ?? "",
       }),
       Blockquote,
-      Callout,
       HorizontalRule,
       Code,
       CodeBlock,
@@ -587,13 +595,11 @@ const EditorV2Inner = ({
             items: ({ query }: { query: string }) => filterItems(clueItemsRef.current, query),
           },
         ],
-        resolveEntity: resolveMentionEntity,
-        onOpenEntity: handleOpenMentionEntity,
       }),
       SlashCommand,
       CodeView,
     ],
-    [handleOpenMentionEntity, resolveMentionEntity]
+    []
   );
 
   const extensions = useMemo(
@@ -855,13 +861,7 @@ const EditorV2Inner = ({
     if (!editor || !activeEntity) return;
     isSwitchingRef.current = true;
     editor.commands.setContent(activeEntity.content ?? EMPTY_DOC, { emitUpdate: false });
-    try {
-      if (!editor.isDestroyed) {
-        editor.commands.focus("end");
-      }
-    } catch {
-      // Editor view not ready yet.
-    }
+    editor.commands.focus("end");
     isSwitchingRef.current = false;
   }, [editor, activeEntity]);
 
@@ -869,7 +869,6 @@ const EditorV2Inner = ({
     const newEntity = createEntity(type);
     setEntities((prev) => [...prev, newEntity]);
     setActiveEntityId(newEntity.id);
-    setShowPropsPanel(true);
   };
 
   const removeEntity = (id: string) => {
@@ -902,7 +901,6 @@ const EditorV2Inner = ({
       );
     }
     setActiveEntityId(id);
-    setShowPropsPanel(true);
   };
 
   if (loading || !activeEntity) {
@@ -932,51 +930,64 @@ const EditorV2Inner = ({
     if (saveStatus === "error") return "保存失败";
     if (isDirty) return "未保存修改";
     if (saveStatus === "saved" && lastSavedAt) return `已保存：${lastSavedAt}`;
-    if (!isDirty) return "已保存";
     return "";
   })();
   const layoutClassName = showPropsPanel
-    ? "editor-v2-main editor-v2-main--with-panel"
-    : "editor-v2-main";
+    ? "grid gap-4 lg:grid-cols-[200px_minmax(0,1fr)_240px]"
+    : "grid gap-4 lg:grid-cols-[200px_minmax(0,1fr)]";
 
   return (
-    <div className="editor-v2-shell">
-      <header className="editor-v2-header">
-        <div className="editor-v2-title">
-          <Input
-            value={scriptMeta.title}
-            onChange={(event) =>
-              setScriptMeta((prev) => ({ ...prev, title: event.target.value }))
-            }
-            placeholder="剧本标题"
-            className="editor-v2-title-input"
-          />
-          <span className="editor-v2-title-meta">结构化编辑 · Script Ink</span>
+    <div className="grid gap-4">
+      <div className="grid gap-3 rounded-3xl border border-ink-100 bg-white/80 px-3 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-ink-500">剧本信息</p>
+            <h2 className="font-display text-lg text-ink-900">
+              {scriptMeta.title ? scriptMeta.title : "未命名剧本"}
+            </h2>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-500">
+              <span>{saveStatusLabel}</span>
+              {showRetry && (
+                <button
+                  type="button"
+                  className="rounded-full border border-ink-200 px-2 py-0.5 text-[11px] text-ink-700 hover:border-ink-400"
+                  onClick={handleManualSave}
+                >
+                  点击重试
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => setShowScriptMeta((prev) => !prev)}
+              className="px-3 py-1 text-xs"
+            >
+              {showScriptMeta ? "收起剧本设置" : "剧本设置"}
+            </Button>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => setShowPropsPanel((prev) => !prev)}
+              className="px-3 py-1 text-xs"
+            >
+              {showPropsPanel ? "隐藏属性面板" : "显示属性面板"}
+            </Button>
+          </div>
         </div>
-        <div className="editor-v2-header-actions">
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => setShowScriptMeta((prev) => !prev)}
-            className="editor-v2-header-button"
-          >
-            {showScriptMeta ? "收起剧本设置" : "剧本设置"}
-          </Button>
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => setShowPropsPanel((prev) => !prev)}
-            className="editor-v2-header-button"
-          >
-            {showPropsPanel ? "收起属性面板" : "属性面板"}
-          </Button>
-        </div>
-      </header>
 
-      {showScriptMeta && (
-        <div className="editor-v2-meta-panel">
-          <div className="editor-v2-meta-grid">
-            <div className="editor-v2-meta-fields">
+        {showScriptMeta && (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_200px]">
+            <div className="grid gap-3">
+              <Input
+                value={scriptMeta.title}
+                onChange={(event) =>
+                  setScriptMeta((prev) => ({ ...prev, title: event.target.value }))
+                }
+                placeholder="剧本标题"
+              />
               <Textarea
                 rows={3}
                 value={scriptMeta.summary}
@@ -1001,7 +1012,7 @@ const EditorV2Inner = ({
               {saveMessage && <p className="text-xs text-ink-600">{saveMessage}</p>}
             </div>
 
-            <div className="editor-v2-meta-settings">
+            <div className="grid gap-3 rounded-2xl border border-ink-100 bg-paper-50/60 p-3 text-sm text-ink-600">
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -1027,215 +1038,170 @@ const EditorV2Inner = ({
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className={layoutClassName}>
-        <aside className="editor-v2-sidebar">
-          <div className="editor-v2-sidebar-title">实体导航</div>
-          <Input
-            value={sidebarQuery}
-            onChange={(event) => setSidebarQuery(event.target.value)}
-            placeholder="搜索实体"
-            className="editor-v2-sidebar-search"
-          />
+        <aside className="rounded-3xl border border-ink-100 bg-paper-50/80 p-3">
+          <div className="flex items-center justify-between text-sm font-semibold text-ink-900">
+            实体导航
+          </div>
 
-          <div className="editor-v2-sidebar-group">
-            <div className="editor-v2-sidebar-group-title">
-              <div className="editor-v2-sidebar-group-label">
-                <button
-                  type="button"
-                  className="editor-v2-sidebar-toggle"
-                  aria-label={collapsedGroups.truth ? "展开" : "收起"}
-                  onClick={() => toggleGroup("truth")}
-                >
-                  {collapsedGroups.truth ? "▸" : "▾"}
-                </button>
+          <div className="mt-4 grid gap-4 text-sm">
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between text-xs text-ink-500">
                 <span>{ENTITY_LABELS.truth}</span>
               </div>
-            </div>
-            {!collapsedGroups.truth &&
-              entities
+              {entities
                 .filter((entity) => entity.type === "truth")
                 .map((entity) => (
                   <button
                     key={entity.id}
                     type="button"
                     onClick={() => selectEntity(entity.id)}
-                    className={`editor-v2-sidebar-item ${
-                      activeEntityId === entity.id ? "is-active" : ""
+                    className={`w-full rounded-2xl px-3 py-2 text-left text-sm transition ${
+                      activeEntityId === entity.id
+                        ? "bg-ink-900 text-paper-50"
+                        : "border border-ink-200 text-ink-700 hover:border-ink-400"
                     }`}
                   >
                     {entity.title || ENTITY_LABELS.truth}
                   </button>
                 ))}
-          </div>
+            </div>
 
-          <div className="editor-v2-sidebar-group">
-            <div className="editor-v2-sidebar-group-title">
-              <div className="editor-v2-sidebar-group-label">
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between text-xs text-ink-500">
+                <span>{ENTITY_LABELS.role}（{roles.length}）</span>
                 <button
                   type="button"
-                  className="editor-v2-sidebar-toggle"
-                  aria-label={collapsedGroups.role ? "展开" : "收起"}
-                  onClick={() => toggleGroup("role")}
+                  className="rounded-full border border-dashed border-ink-300 px-2 py-1 text-[10px] text-ink-600"
+                  onClick={() => addEntity("role")}
                 >
-                  {collapsedGroups.role ? "▸" : "▾"}
+                  + 新角色
                 </button>
-                <span>
-                  {ENTITY_LABELS.role}（{roles.length}）
-                </span>
               </div>
-              <button
-                type="button"
-                className="editor-v2-sidebar-add"
-                onClick={() => addEntity("role")}
-              >
-                + 新角色
-              </button>
-            </div>
-            {!collapsedGroups.role &&
-              filteredRoles.map((entity) => (
-                <div key={entity.id} className="editor-v2-sidebar-row">
+              {roles.map((entity) => (
+                <div key={entity.id} className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => selectEntity(entity.id)}
-                    className={`editor-v2-sidebar-item ${
-                      activeEntityId === entity.id ? "is-active" : ""
+                    className={`flex-1 rounded-2xl px-3 py-2 text-left text-sm transition ${
+                      activeEntityId === entity.id
+                        ? "bg-ink-900 text-paper-50"
+                        : "border border-ink-200 text-ink-700 hover:border-ink-400"
                     }`}
                   >
                     {entity.title || DEFAULT_TITLES.role}
                   </button>
                   <button
                     type="button"
-                    className="editor-v2-sidebar-remove"
+                    className="text-[10px] text-ink-400 hover:text-ink-700"
                     onClick={() => removeEntity(entity.id)}
                   >
                     删除
                   </button>
                 </div>
               ))}
-          </div>
+            </div>
 
-          <div className="editor-v2-sidebar-group">
-            <div className="editor-v2-sidebar-group-title">
-              <div className="editor-v2-sidebar-group-label">
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between text-xs text-ink-500">
+                <span>{ENTITY_LABELS.clue}（{clues.length}）</span>
                 <button
                   type="button"
-                  className="editor-v2-sidebar-toggle"
-                  aria-label={collapsedGroups.clue ? "展开" : "收起"}
-                  onClick={() => toggleGroup("clue")}
+                  className="rounded-full border border-dashed border-ink-300 px-2 py-1 text-[10px] text-ink-600"
+                  onClick={() => addEntity("clue")}
                 >
-                  {collapsedGroups.clue ? "▸" : "▾"}
+                  + 新线索
                 </button>
-                <span>
-                  {ENTITY_LABELS.clue}（{clues.length}）
-                </span>
               </div>
-              <button
-                type="button"
-                className="editor-v2-sidebar-add"
-                onClick={() => addEntity("clue")}
-              >
-                + 新线索
-              </button>
-            </div>
-            {!collapsedGroups.clue &&
-              filteredClues.map((entity) => (
-                <div key={entity.id} className="editor-v2-sidebar-row">
+              {clues.map((entity) => (
+                <div key={entity.id} className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => selectEntity(entity.id)}
-                    className={`editor-v2-sidebar-item ${
-                      activeEntityId === entity.id ? "is-active" : ""
+                    className={`flex-1 rounded-2xl px-3 py-2 text-left text-sm transition ${
+                      activeEntityId === entity.id
+                        ? "bg-ink-900 text-paper-50"
+                        : "border border-ink-200 text-ink-700 hover:border-ink-400"
                     }`}
                   >
                     {entity.title || DEFAULT_TITLES.clue}
                   </button>
                   <button
                     type="button"
-                    className="editor-v2-sidebar-remove"
+                    className="text-[10px] text-ink-400 hover:text-ink-700"
                     onClick={() => removeEntity(entity.id)}
                   >
                     删除
                   </button>
                 </div>
               ))}
-          </div>
+            </div>
 
-          <div className="editor-v2-sidebar-group">
-            <div className="editor-v2-sidebar-group-title">
-              <div className="editor-v2-sidebar-group-label">
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between text-xs text-ink-500">
+                <span>{ENTITY_LABELS.flow_node}（{flowNodes.length}）</span>
                 <button
                   type="button"
-                  className="editor-v2-sidebar-toggle"
-                  aria-label={collapsedGroups.flow_node ? "展开" : "收起"}
-                  onClick={() => toggleGroup("flow_node")}
+                  className="rounded-full border border-dashed border-ink-300 px-2 py-1 text-[10px] text-ink-600"
+                  onClick={() => addEntity("flow_node")}
                 >
-                  {collapsedGroups.flow_node ? "▸" : "▾"}
+                  + 新节点
                 </button>
-                <span>
-                  {ENTITY_LABELS.flow_node}（{flowNodes.length}）
-                </span>
               </div>
-              <button
-                type="button"
-                className="editor-v2-sidebar-add"
-                onClick={() => addEntity("flow_node")}
-              >
-                + 新节点
-              </button>
-            </div>
-            {!collapsedGroups.flow_node &&
-              filteredFlowNodes.map((entity) => (
-                <div key={entity.id} className="editor-v2-sidebar-row">
+              {flowNodes.map((entity) => (
+                <div key={entity.id} className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => selectEntity(entity.id)}
-                    className={`editor-v2-sidebar-item ${
-                      activeEntityId === entity.id ? "is-active" : ""
+                    className={`flex-1 rounded-2xl px-3 py-2 text-left text-sm transition ${
+                      activeEntityId === entity.id
+                        ? "bg-ink-900 text-paper-50"
+                        : "border border-ink-200 text-ink-700 hover:border-ink-400"
                     }`}
                   >
                     {entity.title || DEFAULT_TITLES.flow_node}
                   </button>
                   <button
                     type="button"
-                    className="editor-v2-sidebar-remove"
+                    className="text-[10px] text-ink-400 hover:text-ink-700"
                     onClick={() => removeEntity(entity.id)}
                   >
                     删除
                   </button>
                 </div>
               ))}
+            </div>
           </div>
         </aside>
 
-        <section className="editor-v2-stage">
-          <div className="editor-v2-stage-header">
-            <span className="editor-v2-stage-pill">{ENTITY_LABELS[activeEntity.type]}</span>
+        <section className="rounded-3xl border border-ink-100 bg-white/80">
+          <div className="flex flex-wrap items-center gap-3 border-b border-ink-100/60 px-3 py-2">
+            <span className="rounded-full bg-ink-900 px-3 py-1 text-xs text-paper-50">
+              {ENTITY_LABELS[activeEntity.type]}
+            </span>
             <Input
               value={activeEntity.title}
               onChange={(event) => updateEntityTitle(activeEntity.id, event.target.value)}
               placeholder="输入标题"
-              className="editor-v2-stage-title"
+              className="max-w-sm"
             />
           </div>
 
           {editor && (
             <RichTextProvider editor={editor}>
-              <div className="editor-v2-stage-body">
+              <div className="flex max-h-full w-full flex-col">
                 <RichTextToolbar
+                  wordToolbar={wordTools.toolbar}
                   onSave={handleManualSave}
                   onToggleJson={() => setShowJson((prev) => !prev)}
                   showJson={showJson}
                   saveStatus={saveStatus}
                   previewHref={`/scripts/${scriptId}/preview`}
-                  statusText={saveStatusLabel}
-                  showRetry={showRetry}
                 />
-                <div className="editor-v2-editor">
-                  <EditorContent editor={editor} className="editor-v2-editor-content" />
-                </div>
+                <EditorContent editor={editor} />
                 <EditorFloatingMenu editor={editor} />
 
                 <RichTextBubbleColumns />
@@ -1252,16 +1218,16 @@ const EditorV2Inner = ({
                 <RichTextBubbleText buttonBubble={<MinimalTextBubble />} />
                 <RichTextBubbleTwitter />
                 <RichTextBubbleMenuDragHandle />
-                <SlashCommandList />
+                <SlashCommandList commandList={slashCommandList} />
               </div>
             </RichTextProvider>
           )}
         </section>
 
         {showPropsPanel && (
-          <aside className="editor-v2-panel" ref={panelRef}>
-            <div className="editor-v2-panel-header">
-              <span>属性面板</span>
+          <aside className="rounded-3xl border border-ink-100 bg-paper-50/80 p-3 text-sm text-ink-700">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-ink-900">属性面板</span>
             </div>
 
           {activeEntity.type === "truth" && (

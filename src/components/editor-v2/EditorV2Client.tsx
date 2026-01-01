@@ -6,7 +6,7 @@ const EditorV2 = dynamic(
   () => import("./EditorV2").then((mod) => mod.EditorV2),
   {
     ssr: false,
-    loading: () => <div className="text-sm text-ink-600">编辑器加载中...</div>,
+    loading: () => <div className="text-sm text-ink-600">Loading editor...</div>,
   }
 );
 

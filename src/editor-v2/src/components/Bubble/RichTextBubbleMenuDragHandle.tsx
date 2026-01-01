@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import DragHandle from '@tiptap/extension-drag-handle-react';
-import { TextSelection, type NodeSelection } from '@tiptap/pm/state';
+import { type NodeSelection } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
 
 import {
@@ -33,7 +33,6 @@ export function RichTextBubbleMenuDragHandle() {
   const [currentNode, setCurrentNode] = useState<any>(null);
   const [currentNodePos, setCurrentNodePos] = useState(-1);
   const [menuOpen, setMenuOpen] = useState(false);
-  const lastHandlePosRef = useRef<number | null>(null);
 
   const hasTextAlignExtension = editor?.extensionManager?.extensions?.some((ext: any) => ext?.name === TextAlign.name);
   const hasIndentExtension = editor?.extensionManager?.extensions?.some((ext: any) => ext?.name === Indent.name);
@@ -90,22 +89,13 @@ export function RichTextBubbleMenuDragHandle() {
     editor: Editor;
     pos: number
   }) => {
-    if (!data.editor || data.editor.isDestroyed) {
-      return;
-    }
     if (data.node) {
       setCurrentNode(data.node);
     }
     setCurrentNodePos(data.pos);
     // Force update bubble menu position
     requestAnimationFrame(() => {
-      try {
-        if (!data.editor.isDestroyed) {
-          data.editor.commands.focus();
-        }
-      } catch {
-        // Editor view may not be ready yet.
-      }
+      data.editor.commands.focus();
     });
   }, []);
 
@@ -141,30 +131,7 @@ export function RichTextBubbleMenuDragHandle() {
     }
   };
 
-  const handleSelectBlock = (event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (!editor || currentNodePos < 0) {
-      return;
-    }
-    if (event.shiftKey && lastHandlePosRef.current !== null) {
-      const from = Math.min(lastHandlePosRef.current, currentNodePos);
-      const to = Math.max(
-        lastHandlePosRef.current + (currentNode?.nodeSize || 0),
-        currentNodePos + (currentNode?.nodeSize || 0),
-      );
-      const tr = editor.state.tr.setSelection(TextSelection.create(editor.state.doc, from, to));
-      editor.view.dispatch(tr);
-      return;
-    }
-    editor.commands.setNodeSelection(currentNodePos);
-    lastHandlePosRef.current = currentNodePos;
-  };
-
   useEffect(() => {
-    if (!editor || editor.isDestroyed) {
-      return;
-    }
     if (menuOpen) {
       editor.commands.setMeta('lockDragHandle', true);
     } else {
@@ -172,9 +139,6 @@ export function RichTextBubbleMenuDragHandle() {
     }
 
     return () => {
-      if (!editor || editor.isDestroyed) {
-        return;
-      }
       editor.commands.setMeta('lockDragHandle', false);
     };
   }, [menuOpen]);
@@ -186,36 +150,30 @@ export function RichTextBubbleMenuDragHandle() {
     setMenuOpen(open);
   };
 
-  if (!editor || editor.isDestroyed) {
-    return null;
-  }
-
   return (
     <DragHandle
-      className='richtext-transition-all richtext-duration-200 richtext-ease-out notion-handle'
+      className='richtext-transition-all richtext-duration-200 richtext-ease-out'
       editor={editor}
       onNodeChange={handleNodeChange as any}
       pluginKey={'RichTextBubbleMenuDragHandle'}
     >
-      <div
-        className="richtext-flex richtext-items-center richtext-gap-1"
-        onContextMenu={(event) => {
-          event.preventDefault();
-          handleMenuOpenChange(true);
-        }}
-      >
+      <div className="richtext-flex richtext-items-center richtext-gap-0.5">
         <ActionButton
           action={handleAdd}
           disabled={!editable}
           icon='Plus'
-          tooltip='插入�?
+          tooltip='Insert block'
         />
 
         <ActionButton
           disabled={!editable}
           icon='Grip'
-          tooltip='选择 / 拖拽'
-          action={handleSelectBlock}
+          tooltip='Click for options, Hold for drag'
+          action={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleMenuOpenChange(!menuOpen);
+          }}
         />
 
         <DropdownMenu onOpenChange={handleMenuOpenChange}
@@ -376,3 +334,4 @@ export function RichTextBubbleMenuDragHandle() {
     </DragHandle>
   );
 }
+

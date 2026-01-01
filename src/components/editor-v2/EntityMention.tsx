@@ -1,10 +1,8 @@
 import { mergeAttributes, Node } from "@tiptap/core";
-import type { MouseEvent } from "react";
 import { PluginKey } from "@tiptap/pm/state";
 import { Suggestion } from "@tiptap/suggestion";
 import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
-import type { ReactNodeViewProps } from "@tiptap/react";
-import { NodeViewWrapper, ReactNodeViewRenderer, ReactRenderer } from "@tiptap/react";
+import { ReactRenderer } from "@tiptap/react";
 
 import { NodeViewMentionList } from "@editor-v2/extensions/Mention/components/NodeViewMentionList";
 import { updatePosition } from "@editor-v2/utils/updatePosition";
@@ -16,7 +14,6 @@ export type EntityMentionItem = {
   label: string;
   entityId: string;
   entityType: EntityType;
-  meta?: string;
 };
 
 type EntityMentionSuggestion = {
@@ -24,116 +21,36 @@ type EntityMentionSuggestion = {
   items: (params: { query: string }) => EntityMentionItem[];
 };
 
-type ResolvedMention = {
-  id: string;
-  title: string;
-  entityType: EntityType;
-  meta?: string;
-  summary?: string;
-};
-
-const MentionChip = (props: ReactNodeViewProps) => {
-  const { node, extension } = props;
-  const attrs = node.attrs as {
-    entityId: string;
-    entityType: EntityType;
-    label: string;
-  };
-  const extensionOptions = extension.options as {
-    resolveEntity?: (entityId: string) => ResolvedMention | null;
-    onOpenEntity?: (entityId: string) => void;
-  };
-  const resolved = extensionOptions.resolveEntity?.(attrs.entityId) ?? null;
-  const label = attrs.label || resolved?.title || "???";
-  const prefix = attrs.entityType === "clue" ? "#" : "@";
-  const handleOpen = (event: MouseEvent) => {
-    event.preventDefault();
-    extensionOptions.onOpenEntity?.(attrs.entityId);
-  };
-
-  return (
-    <NodeViewWrapper
-      as="span"
-      className="entity-mention-chip"
-      data-entity-id={attrs.entityId}
-      data-entity-type={attrs.entityType}
-      onClick={handleOpen}
-    >
-      <span className="entity-mention-prefix">{prefix}</span>
-      <span className="entity-mention-text">{label}</span>
-      {resolved?.meta && <span className="entity-mention-meta">{resolved.meta}</span>}
-      {resolved && (
-        <span className="entity-mention-preview" role="tooltip">
-          <span className="entity-mention-preview-title">
-            {resolved.entityType === "clue" ? "??" : "??"} ? {resolved.title}
-          </span>
-          {resolved.meta && <span className="entity-mention-preview-meta">{resolved.meta}</span>}
-          {resolved.summary && (
-            <span className="entity-mention-preview-summary">{resolved.summary}</span>
-          )}
-          <span className="entity-mention-preview-hint">???????????</span>
-        </span>
-      )}
-    </NodeViewWrapper>
-  );
-};
-
 const renderList = () => {
   let reactRenderer: ReactRenderer | null = null;
-  let lastProps: SuggestionProps<EntityMentionItem, EntityMentionItem> | null = null;
+  let exitTimer: number | null = null;
+  let openedAt = 0;
+const MIN_MENU_VISIBLE_MS = 3000;
+
+  const clearExitTimer = () => {
+    if (exitTimer) {
+      window.clearTimeout(exitTimer);
+      exitTimer = null;
+    }
+  };
 
   const destroy = () => {
     if (!reactRenderer) return;
-    try {
-      reactRenderer.destroy();
-    } catch {
-      // Ignore teardown errors.
-    }
-    if (reactRenderer.element?.isConnected) {
-      reactRenderer.element.remove();
-    }
+    reactRenderer.destroy();
+    reactRenderer.element.remove();
     reactRenderer = null;
   };
   const closeNow = () => {
+    clearExitTimer();
     destroy();
-  };
-
-  const getTriggerPos = () => {
-    const rangeFrom = lastProps?.range?.from ?? -1;
-    return rangeFrom > 0 ? rangeFrom - 1 : -1;
-  };
-
-  const hasTrigger = () => {
-    if (!lastProps?.editor) return false;
-    const triggerPos = getTriggerPos();
-    if (triggerPos < 0) return false;
-    const triggerChar = lastProps.editor.state.doc.textBetween(triggerPos, triggerPos + 1, "\0", "\0");
-    return triggerChar === "@" || triggerChar === "#";
-  };
-
-  const shouldHoldMenu = () => {
-    if (!lastProps?.editor?.isFocused) {
-      return false;
-    }
-    const { state } = lastProps.editor;
-    if (!hasTrigger()) return false;
-    const triggerPos = getTriggerPos();
-    const selectionPos = state.selection.from;
-    return selectionPos >= triggerPos && selectionPos <= lastProps.range.to;
-  };
-
-  const shouldCloseImmediately = () => {
-    if (!lastProps?.editor?.isFocused) {
-      return true;
-    }
-    return !hasTrigger();
   };
 
   return {
     onStart: (props: SuggestionProps<EntityMentionItem, EntityMentionItem>) => {
-      if (!props.clientRect) return;
+      if (!props.clientRect?.()) return;
 
-      lastProps = props;
+      openedAt = Date.now();
+      clearExitTimer();
 
       reactRenderer = new ReactRenderer(NodeViewMentionList, {
         props,
@@ -142,14 +59,14 @@ const renderList = () => {
 
       reactRenderer.element.style.position = "absolute";
       document.body.appendChild(reactRenderer.element);
-      updatePosition(props.editor, reactRenderer.element, props.clientRect);
+      updatePosition(props.editor, reactRenderer.element);
     },
     onUpdate(props: SuggestionProps<EntityMentionItem, EntityMentionItem>) {
       if (!reactRenderer) return;
-      lastProps = props;
+      clearExitTimer();
       reactRenderer.updateProps(props);
-      if (!props.clientRect) return;
-      updatePosition(props.editor, reactRenderer.element, props.clientRect);
+      if (!props.clientRect?.()) return;
+      updatePosition(props.editor, reactRenderer.element);
     },
     onKeyDown(props: SuggestionKeyDownProps) {
       if (props.event.key === "Escape") {
@@ -162,14 +79,13 @@ const renderList = () => {
     },
     onExit() {
       if (!reactRenderer) return;
-      if (shouldHoldMenu()) {
-        return;
-      }
-      if (shouldCloseImmediately()) {
+      const elapsed = Date.now() - openedAt;
+      const delay = Math.max(0, MIN_MENU_VISIBLE_MS - elapsed);
+      clearExitTimer();
+      exitTimer = window.setTimeout(() => {
         destroy();
-        return;
-      }
-      destroy();
+        exitTimer = null;
+      }, delay);
     },
     closeNow,
   };
@@ -185,8 +101,6 @@ export const EntityMention = Node.create({
   addOptions() {
     return {
       suggestions: [] as EntityMentionSuggestion[],
-      resolveEntity: undefined as ((entityId: string) => ResolvedMention | null) | undefined,
-      onOpenEntity: undefined as ((entityId: string) => void) | undefined,
       HTMLAttributes: {
         class: "entity-mention",
       },
@@ -227,10 +141,6 @@ export const EntityMention = Node.create({
   renderText({ node }) {
     const prefix = node.attrs.entityType === "clue" ? "#" : "@";
     return `${prefix}${node.attrs.label ?? ""}`;
-  },
-
-  addNodeView() {
-    return ReactNodeViewRenderer(MentionChip);
   },
 
   addProseMirrorPlugins() {

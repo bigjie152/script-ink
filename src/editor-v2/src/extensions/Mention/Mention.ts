@@ -22,34 +22,22 @@ function render () {
 
       document.body.appendChild(reactRenderer.element);
 
-      updatePosition(props.editor, reactRenderer.element, props.clientRect);
+      updatePosition(props.editor, reactRenderer.element);
     },
 
     onUpdate(props: any) {
-      if (!reactRenderer) {
-        return;
-      }
       reactRenderer.updateProps(props);
 
       if (!props.clientRect) {
         return;
       }
-      updatePosition(props.editor, reactRenderer.element, props.clientRect);
+      updatePosition(props.editor, reactRenderer.element);
     },
 
     onKeyDown(props: any) {
       if (props.event.key === 'Escape') {
-        if (reactRenderer) {
-          try {
-            reactRenderer.destroy();
-          } catch {
-            // Ignore teardown errors.
-          }
-          if (reactRenderer.element?.isConnected) {
-            reactRenderer.element.remove();
-          }
-          reactRenderer = null;
-        }
+        reactRenderer.destroy();
+        reactRenderer.element.remove();
 
         return true;
       }
@@ -58,18 +46,8 @@ function render () {
     },
 
     onExit() {
-      if (!reactRenderer) {
-        return;
-      }
-      try {
-        reactRenderer.destroy();
-      } catch {
-        // Ignore teardown errors.
-      }
-      if (reactRenderer.element?.isConnected) {
-        reactRenderer.element.remove();
-      }
-      reactRenderer = null;
+      reactRenderer.destroy();
+      reactRenderer.element.remove();
     },
   };
 }

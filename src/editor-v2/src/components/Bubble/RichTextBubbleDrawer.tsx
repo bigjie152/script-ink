@@ -49,11 +49,11 @@ export function RichTextBubbleDrawer() {
 
   const shouldShow = ({ editor }: any) => {
 
-    const { selection } = editor.state;
+    const { selection } = editor.view.state;
     const { $from, to } = selection;
     let isDrawer = false;
 
-    editor.state.doc.nodesBetween($from.pos, to, (node: any) => {
+    editor.view.state.doc.nodesBetween($from.pos, to, (node: any) => {
       if (node.type.name === Drawer.name) {
         isDrawer = true;
         return false; // Stop iteration if an mermaid is found
@@ -110,3 +110,4 @@ export function RichTextBubbleDrawer() {
     </BubbleMenu>
   );
 }
+

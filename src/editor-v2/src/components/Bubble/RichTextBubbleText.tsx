@@ -156,7 +156,7 @@ export function RichTextBubbleText({ buttonBubble }: RichTextBubbleTextProps) {
   const editable = useEditableEditor();
 
   const shouldShow = ({ editor }: any) => {
-    const { selection } = editor.state;
+    const { selection } = editor.view.state;
     const { $from, to } = selection;
 
     // check content select length is not empty
@@ -191,3 +191,4 @@ export function RichTextBubbleText({ buttonBubble }: RichTextBubbleTextProps) {
     </BubbleMenu>
   );
 }
+

@@ -14,8 +14,6 @@ interface IProps {
   items: Array<{
     id: string
     label: string
-    meta?: string
-    entityType?: string
     avatar?: {
       src: string
     }
@@ -51,15 +49,10 @@ export const NodeViewMentionList: React.FC<IProps> = forwardRef((props, ref) => 
   useEffect(() => setSelectedIndex(0), [props.items]);
 
   useEffect(() => {
-    if (Number.isNaN(selectedIndex + 1)) {
+    if (Number.isNaN(selectedIndex + 1))
       return;
-    }
-    const el = $container.current?.querySelector(
-      `[data-mention-index="${selectedIndex}"]`,
-    );
-    if (el) {
-      scrollIntoView(el, { behavior: 'smooth', scrollMode: 'if-needed' });
-    }
+    const el = $container.current.querySelector(`span:nth-of-type(${selectedIndex + 1})`);
+    el && scrollIntoView(el, { behavior: 'smooth', scrollMode: 'if-needed' });
   }, [selectedIndex]);
 
   useImperativeHandle(ref, () => ({
@@ -84,40 +77,44 @@ export const NodeViewMentionList: React.FC<IProps> = forwardRef((props, ref) => 
   }));
 
   return (
-    <div
-      className="notion-menu notion-menu--mention"
+    <div className={' !richtext-max-h-[320px] !richtext-w-[160px] richtext-overflow-y-auto richtext-overflow-x-hidden  richtext-rounded-md  !richtext-border !richtext-border-solid !richtext-border-border richtext-bg-popover richtext-p-1 richtext-text-popover-foreground richtext-shadow-md richtext-outline-none'}
       data-richtext-portal
       ref={$container}
     >
-      <div className="notion-menu-hint">{t('editor.command.hint')}</div>
-      <div className="notion-menu-list">
-        {props.items.length > 0 ? (
-          props.items.map((item, index) => {
-            const prefix = item.entityType === 'clue' ? '#' : '@';
-            return (
-              <button
-                type="button"
-                data-mention-index={index}
-                className={clsx('notion-menu-item', {
-                  'notion-menu-item-active': index === selectedIndex,
-                })}
+      <div className="richtext-px-2 richtext-pb-1 richtext-text-[10px] richtext-text-foreground/60">
+        {t('editor.command.hint')}
+      </div>
+      <div >
+        {props.items.length > 0
+          ? (
+            props.items.map((item, index) => (
+              <span
+                className={clsx('richtext-flex richtext-w-full richtext-items-center richtext-gap-3 richtext-rounded-sm !richtext-border-none !richtext-bg-transparent richtext-px-2 richtext-py-1.5 richtext-text-left richtext-text-sm richtext-text-foreground !richtext-outline-none richtext-transition-colors hover:!richtext-bg-accent ', { 'bg-item-active': index === selectedIndex })}
                 key={`mention-item-${item.id}`}
                 onClick={(e) => {
                   e.preventDefault();
                   selectItem(index);
                 }}
               >
-                <span className="notion-menu-icon notion-menu-icon-pill">{prefix}</span>
-                <span className="notion-menu-text">
-                  <span className="notion-menu-label">{item?.label}</span>
-                  {item?.meta && <span className="notion-menu-desc">{item.meta}</span>}
-                </span>
-              </button>
-            );
-          })
-        ) : (
-          <div className="notion-menu-empty">{t('editor.mention.empty')}</div>
-        )}
+                {
+                  item?.avatar?.src && (
+                    <img
+                      alt={item.label}
+                      className="richtext-size-5 richtext-rounded-full"
+                      src={item.avatar.src}
+                    />
+                  )
+                }
+
+                {item?.label}
+              </span>
+            ))
+          )
+          : (
+            <div className={clsx('itemUserEmpty, richtext-text-foreground')}>
+              {t('editor.mention.empty')}
+            </div>
+          )}
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ export const SlashCommand = /* @__PURE__ */ Extension.create<any>({
   // },
 
   addProseMirrorPlugins() {
+const MIN_MENU_VISIBLE_MS = 3000;
     let closeMenu: (() => void) | null = null;
 
     return [
@@ -64,62 +65,28 @@ export const SlashCommand = /* @__PURE__ */ Extension.create<any>({
 
         render: () => {
           let reactRenderer: any;
-          let lastProps: any = null;
+          let exitTimer: number | null = null;
+          let openedAt = 0;
+
+          const clearExitTimer = () => {
+            if (exitTimer) {
+              window.clearTimeout(exitTimer);
+              exitTimer = null;
+            }
+          };
 
           const destroy = () => {
             if (!reactRenderer) {
               return;
             }
-            try {
-              reactRenderer.destroy();
-            } catch {
-              // Ignore teardown errors.
-            }
-            if (reactRenderer.element?.isConnected) {
-              reactRenderer.element.remove();
-            }
+            reactRenderer.destroy();
+            reactRenderer.element.remove();
             reactRenderer = null;
           };
 
           closeMenu = () => {
+            clearExitTimer();
             destroy();
-          };
-
-          const getSlashPos = () => {
-            if (!lastProps?.range?.from) {
-              return -1;
-            }
-            return lastProps.range.from - 1;
-          };
-
-          const hasTrigger = () => {
-            const slashPos = getSlashPos();
-            if (slashPos < 0) {
-              return false;
-            }
-            const { state } = lastProps.editor;
-            const slashChar = state.doc.textBetween(slashPos, slashPos + 1, '\0', '\0');
-            return slashChar === '/';
-          };
-
-          const shouldHoldMenu = () => {
-            if (!lastProps?.editor?.isFocused) {
-              return false;
-            }
-
-            const { state } = lastProps.editor;
-            if (!hasTrigger()) return false;
-
-            const slashPos = getSlashPos();
-            const selectionPos = state.selection.from;
-            return selectionPos >= slashPos && selectionPos <= lastProps.range.to;
-          };
-
-          const shouldCloseImmediately = () => {
-            if (!lastProps?.editor?.isFocused) {
-              return true;
-            }
-            return !hasTrigger();
           };
 
           return {
@@ -127,7 +94,9 @@ export const SlashCommand = /* @__PURE__ */ Extension.create<any>({
               if (!props.clientRect) {
                 return;
               }
-              lastProps = props;
+
+              openedAt = Date.now();
+              clearExitTimer();
 
               reactRenderer = new ReactRenderer(SlashCommandNodeView, {
                 props,
@@ -138,20 +107,17 @@ export const SlashCommand = /* @__PURE__ */ Extension.create<any>({
 
               document.body.appendChild(reactRenderer.element);
 
-              updatePosition(props.editor, reactRenderer.element, props.clientRect);
+              updatePosition(props.editor, reactRenderer.element);
             },
 
             onUpdate(props) {
-              if (!reactRenderer) {
-                return;
-              }
-              lastProps = props;
+              clearExitTimer();
               reactRenderer.updateProps(props);
 
               if (!props.clientRect) {
                 return;
               }
-              updatePosition(props.editor, reactRenderer.element, props.clientRect);
+              updatePosition(props.editor, reactRenderer.element);
             },
 
             onKeyDown(props) {
@@ -168,14 +134,13 @@ export const SlashCommand = /* @__PURE__ */ Extension.create<any>({
               if (!reactRenderer) {
                 return;
               }
-              if (shouldHoldMenu()) {
-                return;
-              }
-              if (shouldCloseImmediately()) {
+              const elapsed = Date.now() - openedAt;
+              const delay = Math.max(0, MIN_MENU_VISIBLE_MS - elapsed);
+              clearExitTimer();
+              exitTimer = window.setTimeout(() => {
                 destroy();
-                return;
-              }
-              destroy();
+                exitTimer = null;
+              }, delay);
             },
           };
         },

@@ -55,11 +55,11 @@ function RichTextBubbleImage() {
   const editor = useEditorInstance();
 
   const shouldShow = ({ editor }: any) => {
-    const { selection } = editor.state;
+    const { selection } = editor.view.state;
     const { $from, to } = selection;
     let isImage = false;
 
-    editor.state.doc.nodesBetween($from.pos, to, (node: any) => {
+    editor.view.state.doc.nodesBetween($from.pos, to, (node: any) => {
       if (isImageNode(node)) {
         isImage = true;
         return false; // Stop iteration if an image is found
@@ -114,11 +114,11 @@ function RichTextBubbleImageGif() {
   const editor = useEditorInstance();
 
   const shouldShow = ({ editor }: any) => {
-    const { selection } = editor.state;
+    const { selection } = editor.view.state;
     const { $from, to } = selection;
     let isImage = false;
 
-    editor.state.doc.nodesBetween($from.pos, to, (node: any) => {
+    editor.view.state.doc.nodesBetween($from.pos, to, (node: any) => {
       if (isImageGifNode(node)) {
         isImage = true;
         return false; // Stop iteration if an image is found
@@ -173,11 +173,11 @@ function RichTextBubbleVideo() {
   const editor = useEditorInstance();
 
   const shouldShow = ({ editor }: any) => {
-    const { selection } = editor.state;
+    const { selection } = editor.view.state;
     const { $from, to } = selection;
     let isVideo = false;
 
-    editor.state.doc.nodesBetween($from.pos, to, (node: any) => {
+    editor.view.state.doc.nodesBetween($from.pos, to, (node: any) => {
       if (isVideoNode(node)) {
         isVideo = true;
         return false;
@@ -227,3 +227,4 @@ function RichTextBubbleVideo() {
 }
 
 export { RichTextBubbleImage, RichTextBubbleVideo, RichTextBubbleImageGif };
+
