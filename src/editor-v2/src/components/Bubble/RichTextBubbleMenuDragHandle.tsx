@@ -35,10 +35,6 @@ export function RichTextBubbleMenuDragHandle() {
   const [menuOpen, setMenuOpen] = useState(false);
   const lastHandlePosRef = useRef<number | null>(null);
 
-  if (!editor || editor.isDestroyed) {
-    return null;
-  }
-
   const hasTextAlignExtension = editor?.extensionManager?.extensions?.some((ext: any) => ext?.name === TextAlign.name);
   const hasIndentExtension = editor?.extensionManager?.extensions?.some((ext: any) => ext?.name === Indent.name);
   const hasClearExtension = editor?.extensionManager?.extensions?.some((ext: any) => ext?.name === Clear.name);
@@ -189,6 +185,10 @@ export function RichTextBubbleMenuDragHandle() {
     }
     setMenuOpen(open);
   };
+
+  if (!editor || editor.isDestroyed) {
+    return null;
+  }
 
   return (
     <DragHandle
